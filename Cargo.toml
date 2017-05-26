@@ -1,0 +1,8 @@
+[package]
+name = "lapin-futures-rustls"
+version = "0.1.0"
+authors = ["Marc-Antoine Perennou <%arc-Antoine@Perennou.com>"]
+description   = "placeholder for now"
+license       = "BSD-2-Clause"
+
+[dependencies]

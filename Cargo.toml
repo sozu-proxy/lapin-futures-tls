@@ -17,6 +17,8 @@ amq-protocol  = "^0.18"
 futures       = "^0.1"
 lapin-futures = "^0.8"
 rustls        = "^0.8"
+tokio-core    = "^0.1"
+tokio-io      = "^0.1"
 tokio-rustls  = "^0.2"
 webpki-roots  = "^0.10"
 

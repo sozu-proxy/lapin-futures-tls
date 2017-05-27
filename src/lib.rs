@@ -1,4 +1,5 @@
 extern crate amq_protocol;
+extern crate bytes;
 extern crate futures;
 extern crate lapin_futures as lapin;
 extern crate rustls;
@@ -11,6 +12,7 @@ use std::io::{self, Read, Write};
 use std::sync::Arc;
 
 use amq_protocol::uri::{AMQPScheme, AMQPUri, AMQPUserInfo};
+use bytes::{Buf, BufMut};
 use futures::future::Future;
 use futures::Poll;
 use lapin::client::ConnectionOptions;
@@ -71,6 +73,19 @@ impl Read for AMQPStream {
 }
 
 impl AsyncRead for AMQPStream {
+    unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
+        match *self {
+            AMQPStream::Raw(ref raw) => raw.prepare_uninitialized_buffer(buf),
+            AMQPStream::Tls(ref tls) => tls.prepare_uninitialized_buffer(buf),
+        }
+    }
+
+    fn read_buf<B: BufMut>(&mut self, buf: &mut B) -> Poll<usize, io::Error> {
+        match *self {
+            AMQPStream::Raw(ref mut raw) => raw.read_buf(buf),
+            AMQPStream::Tls(ref mut tls) => tls.read_buf(buf),
+        }
+    }
 }
 
 impl Write for AMQPStream {
@@ -94,6 +109,13 @@ impl AsyncWrite for AMQPStream {
         match *self {
             AMQPStream::Raw(ref mut raw) => raw.shutdown(),
             AMQPStream::Tls(ref mut tls) => tls.shutdown(),
+        }
+    }
+
+    fn write_buf<B: Buf>(&mut self, buf: &mut B) -> Poll<usize, io::Error> {
+        match *self {
+            AMQPStream::Raw(ref mut raw) => raw.write_buf(buf),
+            AMQPStream::Tls(ref mut tls) => tls.write_buf(buf),
         }
     }
 }

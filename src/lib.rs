@@ -7,54 +7,99 @@ extern crate tokio_io;
 extern crate tokio_rustls;
 extern crate webpki_roots;
 
-use std::io;
+use std::io::{self, Read, Write};
 use std::sync::Arc;
 
 use amq_protocol::uri::{AMQPScheme, AMQPUri, AMQPUserInfo};
 use futures::future::Future;
+use futures::Poll;
 use lapin::client::ConnectionOptions;
-use rustls::ClientConfig;
 use tokio_core::net::TcpStream;
-use tokio_core::reactor::Core;
+use tokio_core::reactor::Handle;
 use tokio_io::{AsyncRead, AsyncWrite};
-use tokio_rustls::ClientConfigExt;
+use tokio_rustls::{ClientConfigExt, TlsStream};
+
+pub enum AMQPStream {
+    Raw(TcpStream),
+    Tls(TlsStream<TcpStream, rustls::ClientSession>),
+}
 
 pub trait AMQPConnectionExt {
-    fn connect_raw(&self, core: &Core, heartbeat: Option<u16>) -> Box<Future<Item = lapin::client::Client<TcpStream>, Error = io::Error> + 'static>;
-    fn connect_tls(&self, core: &Core, heartbeat: Option<u16>) -> Box<Future<Item = lapin::client::Client<tokio_rustls::TlsStream<tokio_core::net::TcpStream, rustls::ClientSession>>, Error = io::Error> + 'static>;
+    fn connect(&self, handle: &Handle, heartbeat: Option<u16>) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + 'static>;
 }
 
 impl AMQPConnectionExt for AMQPUri {
-    fn connect_raw(&self, core: &Core, heartbeat: Option<u16>) -> Box<Future<Item = lapin::client::Client<TcpStream>, Error = io::Error> + 'static> {
-        if self.scheme != AMQPScheme::AMQP {
-            return Box::new(futures::future::err(io::Error::new(io::ErrorKind::Other, "connect_raw called but scheme is not 'amqp'")))
-        }
+    fn connect(&self, handle: &Handle, heartbeat: Option<u16>) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + 'static> {
         let userinfo = self.authority.userinfo.clone();
         let vhost    = self.vhost.clone();
-        Box::new(raw_stream(core, self.authority.host.as_str(), self.authority.port).and_then(move |stream| connect_stream(stream, userinfo, vhost, heartbeat)))
-    }
+        let stream   = match self.scheme {
+            AMQPScheme::AMQP  => AMQPStream::raw(handle, &self.authority.host, self.authority.port),
+            AMQPScheme::AMQPS => AMQPStream::tls(handle, &self.authority.host, self.authority.port),
+        };
 
-    fn connect_tls(&self, core: &Core, heartbeat: Option<u16>) -> Box<Future<Item = lapin::client::Client<tokio_rustls::TlsStream<tokio_core::net::TcpStream, rustls::ClientSession>>, Error = io::Error> + 'static> {
-        if self.scheme != AMQPScheme::AMQPS {
-            return Box::new(futures::future::err(io::Error::new(io::ErrorKind::Other, "connect_tls called but scheme is not 'amqps'")))
-        }
-        let mut config = ClientConfig::new();
-        config.root_store.add_trust_anchors(&webpki_roots::ROOTS);
-        let config     = Arc::new(config);
-        let host       = self.authority.host.clone();
-        let userinfo   = self.authority.userinfo.clone();
-        let vhost      = self.vhost.clone();
-        Box::new(raw_stream(core, self.authority.host.as_str(), self.authority.port).and_then(move |stream| config.connect_async(&host, stream)).and_then(move |stream| connect_stream(stream, userinfo, vhost, heartbeat)))
+        Box::new(stream.and_then(move |stream| connect_stream(stream, userinfo, vhost, heartbeat)))
     }
 }
 
-fn raw_stream(core: &Core, host: &str, port: u16) -> Box<Future<Item = TcpStream, Error = io::Error> + 'static> {
-    let handle     = core.handle();
-
-    match std::net::TcpStream::connect((host, port)).and_then(|stream| TcpStream::from_stream(stream, &handle)) {
-        Ok(stream) => Box::new(futures::future::ok(stream)),
-        Err(e)     => Box::new(futures::future::err(e)),
+impl AMQPStream {
+    fn raw(handle: &Handle, host: &str, port: u16) -> Box<Future<Item = Self, Error = io::Error> + 'static> {
+        match open_tcp_stream(handle, host, port) {
+            Ok(stream) => Box::new(futures::future::ok(AMQPStream::Raw(stream))),
+            Err(e)     => Box::new(futures::future::err(e)),
+        }
     }
+
+    fn tls(handle: &Handle, host: &str, port: u16) -> Box<Future<Item = Self, Error = io::Error> + 'static> {
+        let mut config = rustls::ClientConfig::new();
+        config.root_store.add_trust_anchors(&webpki_roots::ROOTS);
+        let config     = Arc::new(config);
+
+        match open_tcp_stream(handle, host, port) {
+            Ok(stream) => Box::new(config.connect_async(host, stream).map(AMQPStream::Tls)),
+            Err(e)     => Box::new(futures::future::err(e)),
+        }
+    }
+}
+
+impl Read for AMQPStream {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        match *self {
+            AMQPStream::Raw(ref mut raw) => raw.read(buf),
+            AMQPStream::Tls(ref mut tls) => tls.read(buf),
+        }
+    }
+}
+
+impl AsyncRead for AMQPStream {
+}
+
+impl Write for AMQPStream {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match *self {
+            AMQPStream::Raw(ref mut raw) => raw.write(buf),
+            AMQPStream::Tls(ref mut tls) => tls.write(buf),
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match *self {
+            AMQPStream::Raw(ref mut raw) => raw.flush(),
+            AMQPStream::Tls(ref mut tls) => tls.flush(),
+        }
+    }
+}
+
+impl AsyncWrite for AMQPStream {
+    fn shutdown(&mut self) -> Poll<(), io::Error> {
+        match *self {
+            AMQPStream::Raw(ref mut raw) => raw.shutdown(),
+            AMQPStream::Tls(ref mut tls) => tls.shutdown(),
+        }
+    }
+}
+
+fn open_tcp_stream(handle: &Handle, host: &str, port: u16) -> io::Result<TcpStream> {
+    std::net::TcpStream::connect((host, port)).and_then(|stream| TcpStream::from_stream(stream, &handle))
 }
 
 fn connect_stream<T: AsyncRead + AsyncWrite + 'static>(stream: T, credentials: AMQPUserInfo, vhost: String, heartbeat: Option<u16>) -> Box<Future<Item = lapin::client::Client<T>, Error = io::Error> + 'static> {

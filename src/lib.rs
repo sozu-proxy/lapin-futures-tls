@@ -1,3 +1,48 @@
+#![deny(missing_docs)]
+#![doc(html_root_url = "https://docs.rs/lapin-futures-rustls/0.2.0/")]
+
+//! lapin-futures-rustls
+//!
+//! This library offers a nice integration of `rustls` with the `lapin-futures` library.
+//! It uses `amq-protocol` URI parsing feature and adds a `connect` method to `AMQPUri`
+//! which will provide you with a `lapin_futures::client::Client` wrapped in a `Future`.
+//!
+//! It autodetects whether you're using `amqp` or `amqps` and opens either a raw `TcpStream`
+//! or a `TlsStream` using `rustls` as the SSL engine.
+//!
+//! ## Connecting and opening a channel
+//!
+//! ```rust,no_run
+//! extern crate amq_protocol;
+//! extern crate env_logger;
+//! extern crate futures;
+//! extern crate lapin_futures_rustls;
+//! extern crate tokio_core;
+//!
+//! use amq_protocol::uri::AMQPUri;
+//! use futures::future::Future;
+//! use lapin_futures_rustls::AMQPConnectionExt;
+//! use tokio_core::reactor::Core;
+//!
+//! fn main() {
+//!     env_logger::init().unwrap();
+//!
+//!     let uri      = "amqps://user:pass@host/vhost?heartbeat=10".parse::<AMQPUri>().unwrap();
+//!     let mut core = Core::new().unwrap();
+//!     let handle   = core.handle();
+//!
+//!     core.run(
+//!         uri.connect(&handle).and_then(|client| {
+//!             println!("Connected!");
+//!             client.create_confirm_channel()
+//!         }).and_then(|channel| {
+//!             println!("Closing channel.");
+//!             channel.close(200, "Bye".to_string())
+//!         })
+//!     ).unwrap();
+//! }
+//! ```
+
 extern crate amq_protocol;
 extern crate bytes;
 extern crate futures;
@@ -21,12 +66,19 @@ use tokio_core::reactor::Handle;
 use tokio_io::{AsyncRead, AsyncWrite};
 use tokio_rustls::{ClientConfigExt, TlsStream};
 
+/// Represents either a raw `TcpStream` or a `TlsStream` backend by `rustls`.
+/// The `TlsStream` is wrapped in a `Box` to keep the enum footprint minimal.
 pub enum AMQPStream {
+    /// The raw `TcpStream` used for basic AMQP connections.
     Raw(TcpStream),
+    /// The `TlsStream` used for AMQPs connections.
     Tls(Box<TlsStream<TcpStream, rustls::ClientSession>>),
 }
 
+/// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
 pub trait AMQPConnectionExt {
+    /// Method providing a `lapin_futures::client::Client` wrapped in a `Future`
+    /// using a `tokio_code::reactor::Handle`.
     fn connect(&self, handle: &Handle) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + 'static>;
 }
 

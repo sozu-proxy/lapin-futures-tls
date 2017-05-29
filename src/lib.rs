@@ -23,7 +23,7 @@ use tokio_rustls::{ClientConfigExt, TlsStream};
 
 pub enum AMQPStream {
     Raw(TcpStream),
-    Tls(TlsStream<TcpStream, rustls::ClientSession>),
+    Tls(Box<TlsStream<TcpStream, rustls::ClientSession>>),
 }
 
 pub trait AMQPConnectionExt {
@@ -40,7 +40,7 @@ impl AMQPConnectionExt for AMQPUri {
             AMQPScheme::AMQPS => AMQPStream::tls(handle, &self.authority.host, self.authority.port),
         };
 
-        Box::new(stream.and_then(move |stream| connect_stream(stream, userinfo, vhost, query)))
+        Box::new(stream.and_then(move |stream| connect_stream(stream, userinfo, vhost, &query)))
     }
 }
 
@@ -58,7 +58,7 @@ impl AMQPStream {
         let config     = Arc::new(config);
 
         match open_tcp_stream(handle, host, port) {
-            Ok(stream) => Box::new(config.connect_async(host, stream).map(AMQPStream::Tls)),
+            Ok(stream) => Box::new(config.connect_async(host, stream).map(Box::new).map(AMQPStream::Tls)),
             Err(e)     => Box::new(futures::future::err(e)),
         }
     }
@@ -122,10 +122,10 @@ impl AsyncWrite for AMQPStream {
 }
 
 fn open_tcp_stream(handle: &Handle, host: &str, port: u16) -> io::Result<TcpStream> {
-    std::net::TcpStream::connect((host, port)).and_then(|stream| TcpStream::from_stream(stream, &handle))
+    std::net::TcpStream::connect((host, port)).and_then(|stream| TcpStream::from_stream(stream, handle))
 }
 
-fn connect_stream<T: AsyncRead + AsyncWrite + 'static>(stream: T, credentials: AMQPUserInfo, vhost: String, query: AMQPQueryString) -> Box<Future<Item = lapin::client::Client<T>, Error = io::Error> + 'static> {
+fn connect_stream<T: AsyncRead + AsyncWrite + 'static>(stream: T, credentials: AMQPUserInfo, vhost: String, query: &AMQPQueryString) -> Box<Future<Item = lapin::client::Client<T>, Error = io::Error> + 'static> {
     Box::new(lapin::client::Client::connect(stream, &ConnectionOptions {
         username:  credentials.username,
         password:  credentials.password,

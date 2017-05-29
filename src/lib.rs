@@ -11,7 +11,7 @@ extern crate webpki_roots;
 use std::io::{self, Read, Write};
 use std::sync::Arc;
 
-use amq_protocol::uri::{AMQPScheme, AMQPUri, AMQPUserInfo};
+use amq_protocol::uri::{AMQPQueryString, AMQPScheme, AMQPUri, AMQPUserInfo};
 use bytes::{Buf, BufMut};
 use futures::future::Future;
 use futures::Poll;
@@ -27,19 +27,20 @@ pub enum AMQPStream {
 }
 
 pub trait AMQPConnectionExt {
-    fn connect(&self, handle: &Handle, heartbeat: Option<u16>) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + 'static>;
+    fn connect(&self, handle: &Handle) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + 'static>;
 }
 
 impl AMQPConnectionExt for AMQPUri {
-    fn connect(&self, handle: &Handle, heartbeat: Option<u16>) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + 'static> {
+    fn connect(&self, handle: &Handle) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + 'static> {
         let userinfo = self.authority.userinfo.clone();
         let vhost    = self.vhost.clone();
+        let query    = self.query.clone();
         let stream   = match self.scheme {
             AMQPScheme::AMQP  => AMQPStream::raw(handle, &self.authority.host, self.authority.port),
             AMQPScheme::AMQPS => AMQPStream::tls(handle, &self.authority.host, self.authority.port),
         };
 
-        Box::new(stream.and_then(move |stream| connect_stream(stream, userinfo, vhost, heartbeat)))
+        Box::new(stream.and_then(move |stream| connect_stream(stream, userinfo, vhost, query)))
     }
 }
 
@@ -124,11 +125,11 @@ fn open_tcp_stream(handle: &Handle, host: &str, port: u16) -> io::Result<TcpStre
     std::net::TcpStream::connect((host, port)).and_then(|stream| TcpStream::from_stream(stream, &handle))
 }
 
-fn connect_stream<T: AsyncRead + AsyncWrite + 'static>(stream: T, credentials: AMQPUserInfo, vhost: String, heartbeat: Option<u16>) -> Box<Future<Item = lapin::client::Client<T>, Error = io::Error> + 'static> {
+fn connect_stream<T: AsyncRead + AsyncWrite + 'static>(stream: T, credentials: AMQPUserInfo, vhost: String, query: AMQPQueryString) -> Box<Future<Item = lapin::client::Client<T>, Error = io::Error> + 'static> {
     Box::new(lapin::client::Client::connect(stream, &ConnectionOptions {
         username:  credentials.username,
         password:  credentials.password,
         vhost:     vhost,
-        heartbeat: heartbeat.unwrap_or_else(|| ConnectionOptions::default().heartbeat),
+        heartbeat: query.heartbeat.unwrap_or_else(|| ConnectionOptions::default().heartbeat),
     }))
 }

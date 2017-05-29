@@ -13,7 +13,7 @@ license       = "BSD-2-Clause"
 name = "lapin_futures_rustls"
 
 [dependencies]
-amq-protocol  = "^0.18"
+amq-protocol  = "^0.18.1"
 bytes         = "^0.4"
 futures       = "^0.1"
 lapin-futures = "^0.8"

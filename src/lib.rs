@@ -178,10 +178,12 @@ fn open_tcp_stream(handle: &Handle, host: &str, port: u16) -> io::Result<TcpStre
 }
 
 fn connect_stream<T: AsyncRead + AsyncWrite + 'static>(stream: T, credentials: AMQPUserInfo, vhost: String, query: &AMQPQueryString) -> Box<Future<Item = lapin::client::Client<T>, Error = io::Error> + 'static> {
+    let defaults = ConnectionOptions::default();
     Box::new(lapin::client::Client::connect(stream, &ConnectionOptions {
         username:  credentials.username,
         password:  credentials.password,
         vhost:     vhost,
-        heartbeat: query.heartbeat.unwrap_or_else(|| ConnectionOptions::default().heartbeat),
+        frame_max: query.frame_max.unwrap_or_else(|| defaults.frame_max),
+        heartbeat: query.heartbeat.unwrap_or_else(|| defaults.heartbeat),
     }))
 }

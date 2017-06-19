@@ -1,0 +1,32 @@
+[package]
+name          = "lapin-futures-rustls"
+version       = "0.2.0" # remember to update html_root_url
+authors       = ["Marc-Antoine Perennou <%arc-Antoine@Perennou.com>"]
+description   = "Integration of rustls with lapin-futures"
+repository    = "https://github.com/sozu-proxy/lapin-futures-tls"
+documentation = "https://docs.rs/lapin-futures-rustls"
+keywords      = ["amqp","rabbitmq","futures","tokio","tls"]
+categories    = ["api-bindings","network-programming"]
+license       = "BSD-2-Clause"
+
+[lib]
+name = "lapin_futures_rustls"
+
+[dependencies]
+amq-protocol  = "^0.19"
+bytes         = "^0.4"
+futures       = "^0.1"
+lapin-futures = {git="https://github.com/sozu-proxy/lapin"}
+#lapin-futures = "^0.9"
+rustls        = "^0.9"
+tokio-core    = "^0.1"
+tokio-io      = "^0.1"
+tokio-rustls  = "^0.2"
+webpki-roots  = "^0.11"
+
+[dev-dependencies]
+env_logger = "^0.4"
+
+[badges]
+travis-ci = { repository = "sozu-proxy/lapin-futures-tls" }
+appveyor  = { repository = "Keruspe/lapin-futures-tls" }

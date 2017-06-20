@@ -5,18 +5,16 @@ extern crate tokio_core;
 
 use futures::future::Future;
 use lapin_futures_rustls::AMQPConnectionExt;
-use lapin_futures_rustls::uri::AMQPUri;
 use tokio_core::reactor::Core;
 
 fn main() {
     env_logger::init().unwrap();
 
-    let uri      = "amqps://user:pass@host/vhost?heartbeat=10".parse::<AMQPUri>().unwrap();
     let mut core = Core::new().unwrap();
     let handle   = core.handle();
 
     core.run(
-        uri.connect(&handle).and_then(|client| {
+        "amqps://user:pass@host/vhost?heartbeat=10".connect(&handle).and_then(|client| {
             println!("Connected!");
             client.create_confirm_channel()
         }).and_then(|channel| {

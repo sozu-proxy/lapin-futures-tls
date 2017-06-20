@@ -102,6 +102,15 @@ impl AMQPConnectionExt for AMQPUri {
     }
 }
 
+impl AMQPConnectionExt for str {
+    fn connect(&self, handle: &Handle) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + 'static> {
+        match self.parse::<AMQPUri>() {
+            Ok(uri)  => uri.connect(handle),
+            Err(err) => Box::new(futures::future::err(io::Error::new(io::ErrorKind::Other, err))),
+        }
+    }
+}
+
 impl AMQPStream {
     fn raw(handle: &Handle, host: &str, port: u16) -> Box<Future<Item = Self, Error = io::Error> + 'static> {
         match open_tcp_stream(handle, host, port) {

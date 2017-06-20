@@ -46,25 +46,31 @@
 extern crate amq_protocol;
 extern crate bytes;
 extern crate futures;
-extern crate lapin_futures as lapin;
+extern crate lapin_futures;
 extern crate rustls;
 extern crate tokio_core;
 extern crate tokio_io;
 extern crate tokio_rustls;
 extern crate webpki_roots;
 
+/// Reexport of the `lapin_futures` crate
+pub mod lapin;
+/// Reexport of the `uri` module from the `amq_protocol` crate
+pub mod uri;
+
 use std::io::{self, Read, Write};
 use std::sync::Arc;
 
-use amq_protocol::uri::{AMQPQueryString, AMQPScheme, AMQPUri, AMQPUserInfo};
 use bytes::{Buf, BufMut};
 use futures::future::Future;
 use futures::Poll;
-use lapin::client::ConnectionOptions;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Handle;
 use tokio_io::{AsyncRead, AsyncWrite};
 use tokio_rustls::{ClientConfigExt, TlsStream};
+
+use lapin::client::ConnectionOptions;
+use uri::{AMQPQueryString, AMQPScheme, AMQPUri, AMQPUserInfo};
 
 /// Represents either a raw `TcpStream` or a `TlsStream` backend by `rustls`.
 /// The `TlsStream` is wrapped in a `Box` to keep the enum footprint minimal.

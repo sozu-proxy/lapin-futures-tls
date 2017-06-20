@@ -1,12 +1,11 @@
-extern crate amq_protocol;
 extern crate env_logger;
 extern crate futures;
 extern crate lapin_futures_rustls;
 extern crate tokio_core;
 
-use amq_protocol::uri::AMQPUri;
 use futures::future::Future;
 use lapin_futures_rustls::AMQPConnectionExt;
+use lapin_futures_rustls::uri::AMQPUri;
 use tokio_core::reactor::Core;
 
 fn main() {

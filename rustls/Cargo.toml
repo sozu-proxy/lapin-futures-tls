@@ -13,15 +13,13 @@ license       = "BSD-2-Clause"
 name = "lapin_futures_rustls"
 
 [dependencies]
-amq-protocol  = "^0.19"
-bytes         = "^0.4"
-futures       = "^0.1"
-lapin-futures = "^0.9"
-rustls        = "^0.9"
-tokio-core    = "^0.1"
-tokio-io      = "^0.1"
-tokio-rustls  = "^0.2"
-webpki-roots  = "^0.11"
+futures        = "^0.1"
+tls-api-rustls = "^0.1"
+tokio-core     = "^0.1"
+
+[dependencies.lapin-futures-tls-api]
+path    = "../tls-api"
+version = "^0.0"
 
 [dev-dependencies]
 env_logger = "^0.4"

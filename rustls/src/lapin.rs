@@ -1,1 +1,1 @@
-pub use lapin_futures::*;
+pub use lapin_futures_tls_api::lapin::*;

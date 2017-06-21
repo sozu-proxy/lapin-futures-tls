@@ -4,7 +4,7 @@ extern crate lapin_futures_rustls;
 extern crate tokio_core;
 
 use futures::future::Future;
-use lapin_futures_rustls::AMQPConnectionExt;
+use lapin_futures_rustls::AMQPConnectionRustlsExt;
 use tokio_core::reactor::Core;
 
 fn main() {

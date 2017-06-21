@@ -23,7 +23,8 @@ tokio-io      = "^0.1"
 tokio-tls-api = "^0.1"
 
 [dev-dependencies]
-env_logger = "^0.4"
+env_logger   = "^0.4"
+tls-api-stub = "^0.1"
 
 [badges]
 travis-ci = { repository = "sozu-proxy/lapin-futures-tls" }

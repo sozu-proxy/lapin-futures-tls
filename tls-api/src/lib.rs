@@ -9,6 +9,38 @@
 //!
 //! It autodetects whether you're using `amqp` or `amqps` and opens either a raw `TcpStream`
 //! or a `TlsStream` using `tls-api` as the SSL api.
+//!
+//! ## Connecting and opening a channel
+//!
+//! ```rust,no_run
+//! extern crate env_logger;
+//! extern crate futures;
+//! extern crate lapin_futures_tls_api;
+//! extern crate tls_api_stub;
+//! extern crate tokio_core;
+//!
+//! use futures::future::Future;
+//! use lapin_futures_tls_api::AMQPConnectionExt;
+//! use tokio_core::reactor::Core;
+//!
+//! fn main() {
+//!     env_logger::init().unwrap();
+//!
+//!     let mut core = Core::new().unwrap();
+//!     let handle   = core.handle();
+//!
+//!     core.run(
+//!         "amqps://user:pass@host/vhost?heartbeat=10".connect::<tls_api_stub::TlsConnector>(&handle).and_then(|client| {
+//!             println!("Connected!");
+//!             client.create_confirm_channel()
+//!         }).and_then(|channel| {
+//!             println!("Closing channel.");
+//!             channel.close(200, "Bye".to_string())
+//!         })
+//!     ).unwrap();
+//! }
+//! ```
+
 
 extern crate amq_protocol;
 extern crate bytes;

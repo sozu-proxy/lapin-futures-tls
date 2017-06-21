@@ -14,14 +14,12 @@ fn main() {
     let handle   = core.handle();
 
     core.run(
-        futures::future::ok(()).and_then(|_| {
         "amqps://user:pass@host/vhost?heartbeat=10".connect(&handle).and_then(|client| {
             println!("Connected!");
             client.create_confirm_channel()
         }).and_then(|channel| {
             println!("Closing channel.");
             channel.close(200, "Bye".to_string())
-        })
         })
     ).unwrap();
 }

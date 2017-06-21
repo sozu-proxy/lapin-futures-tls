@@ -1,2 +1,2 @@
 [workspace]
-members = [ "rustls" ]
+members = [ "rustls", "tls-api" ]

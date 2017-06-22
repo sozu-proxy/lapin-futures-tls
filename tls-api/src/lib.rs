@@ -111,10 +111,7 @@ impl AMQPConnectionExt for str {
 
 impl AMQPStream {
     fn raw(handle: &Handle, host: &str, port: u16) -> Box<Future<Item = Self, Error = io::Error> + 'static> {
-        match open_tcp_stream(handle, host, port) {
-            Ok(stream) => Box::new(futures::future::ok(AMQPStream::Raw(stream))),
-            Err(e)     => Box::new(futures::future::err(e)),
-        }
+        Box::new(futures::future::result(open_tcp_stream(handle, host, port)).map(AMQPStream::Raw))
     }
 
     fn tls<C: TlsConnector>(handle: &Handle, host: &str, port: u16) -> Box<Future<Item = Self, Error = io::Error> + 'static> {

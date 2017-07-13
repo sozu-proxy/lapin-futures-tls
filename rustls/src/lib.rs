@@ -1,5 +1,5 @@
 #![deny(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/lapin-futures-rustls/0.6.0/")]
+#![doc(html_root_url = "https://docs.rs/lapin-futures-rustls/0.7.0/")]
 
 //! lapin-futures-rustls
 //!
@@ -18,7 +18,10 @@
 //! extern crate lapin_futures_rustls;
 //! extern crate tokio_core;
 //!
+//! use lapin_futures_rustls::lapin;
+//!
 //! use futures::future::Future;
+//! use lapin::channel::ConfirmSelectOptions;
 //! use lapin_futures_rustls::AMQPConnectionRustlsExt;
 //! use tokio_core::reactor::Core;
 //!
@@ -31,10 +34,10 @@
 //!     core.run(
 //!         "amqps://user:pass@host/vhost?heartbeat=10".connect(&handle).and_then(|client| {
 //!             println!("Connected!");
-//!             client.create_confirm_channel()
+//!             client.create_confirm_channel(ConfirmSelectOptions::default())
 //!         }).and_then(|channel| {
 //!             println!("Closing channel.");
-//!             channel.close(200, "Bye".to_string())
+//!             channel.close(200, "Bye")
 //!         })
 //!     ).unwrap();
 //! }

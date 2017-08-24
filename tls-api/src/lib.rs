@@ -121,9 +121,9 @@ impl AMQPStream {
     fn tls<C: TlsConnector + 'static>(handle: &Handle, host: String, port: u16) -> Box<Future<Item = Self, Error = io::Error> + 'static> {
         Box::new(
             open_tcp_stream(handle, &host, port).join(
-                futures::future::result(C::builder().and_then(TlsConnectorBuilder::build).map_err(wrap_error))
+                futures::future::result(C::builder().and_then(TlsConnectorBuilder::build).map_err(From::from))
             ).and_then(move |(stream, connector)| {
-                tokio_tls_api::connect_async(&connector, &host, stream).map_err(wrap_error).map(Box::new).map(AMQPStream::Tls)
+                tokio_tls_api::connect_async(&connector, &host, stream).map_err(From::from).map(Box::new).map(AMQPStream::Tls)
             })
         )
     }
@@ -184,10 +184,6 @@ impl AsyncWrite for AMQPStream {
             AMQPStream::Tls(ref mut tls) => tls.write_buf(buf),
         }
     }
-}
-
-fn wrap_error(e: tls_api::Error) -> io::Error {
-    io::Error::new(io::ErrorKind::Other, e)
 }
 
 fn open_tcp_stream(handle: &Handle, host: &str, port: u16) -> Box<Future<Item = TcpStream, Error = io::Error> + 'static> {

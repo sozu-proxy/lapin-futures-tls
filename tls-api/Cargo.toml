@@ -13,10 +13,12 @@ license       = "BSD-2-Clause"
 name = "lapin_futures_tls_api"
 
 [dependencies]
+abstract-ns   = "^0.4"
 amq-protocol  = "^0.19"
 bytes         = "^0.4"
 futures       = "^0.1"
 lapin-futures = "^0.10"
+ns-dns-tokio  = "^0.4"
 tls-api       = "^0.1.10"
 tokio-core    = "^0.1"
 tokio-io      = "^0.1"

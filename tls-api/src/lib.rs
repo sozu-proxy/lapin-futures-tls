@@ -44,11 +44,12 @@
 //! }
 //! ```
 
-
+extern crate abstract_ns;
 extern crate amq_protocol;
 extern crate bytes;
 extern crate futures;
 extern crate lapin_futures;
+extern crate ns_dns_tokio;
 extern crate tls_api;
 extern crate tokio_core;
 extern crate tokio_io;
@@ -60,10 +61,13 @@ pub mod lapin;
 pub mod uri;
 
 use std::io::{self, Read, Write};
+use std::str::FromStr;
 
+use abstract_ns::HostResolve;
 use bytes::{Buf, BufMut};
 use futures::future::Future;
 use futures::Poll;
+use ns_dns_tokio::DnsResolver;
 use tls_api::{TlsConnector, TlsConnectorBuilder};
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Handle;
@@ -187,7 +191,21 @@ impl AsyncWrite for AMQPStream {
 }
 
 fn open_tcp_stream(handle: &Handle, host: &str, port: u16) -> Box<Future<Item = TcpStream, Error = io::Error> + 'static> {
-    Box::new(futures::future::result(std::net::TcpStream::connect((host, port)).and_then(|stream| TcpStream::from_stream(stream, handle))))
+    let resolver = DnsResolver::system_config(handle).map_err(|err| io::Error::new(io::ErrorKind::Other, "Failed to initialize DnsResolver"));
+    //let resolver = DnsResolver::system_config(handle).map_err(|err| io::Error::new(io::ErrorKind::Other, err));
+    let name     = abstract_ns::name::Name::from_str(host).map_err(|err| io::Error::new(io::ErrorKind::Other, err));
+    let handle2  = handle.clone();
+    Box::new(
+        futures::future::result(resolver).join(futures::future::result(name)).and_then(move |(resolver, name)| {
+            resolver.resolve_host(&name).map_err(|err| io::Error::new(io::ErrorKind::Other, err))
+        }).map(move |ip_list| {
+            ip_list.with_port(port)
+        }).and_then(move |address| {
+            address.pick_one().ok_or_else(|| io::Error::new(io::ErrorKind::AddrNotAvailable, "Couldn't resolve hostname"))
+        }).and_then(move |sockaddr| {
+            TcpStream::connect(&sockaddr, &handle2)
+        })
+    )
 }
 
 fn connect_stream<T: AsyncRead + AsyncWrite + Send + Sync + 'static>(stream: T, handle: Handle, credentials: AMQPUserInfo, vhost: String, query: &AMQPQueryString) -> Box<Future<Item = lapin::client::Client<T>, Error = io::Error> + 'static> {

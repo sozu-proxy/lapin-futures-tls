@@ -1,6 +1,6 @@
 [package]
 name          = "lapin-futures-rustls"
-version       = "0.8.0" # remember to update html_root_url
+version       = "0.9.0" # remember to update html_root_url
 authors       = ["Marc-Antoine Perennou <%arc-Antoine@Perennou.com>"]
 description   = "Integration of rustls with lapin-futures"
 repository    = "https://github.com/sozu-proxy/lapin-futures-tls"
@@ -18,7 +18,7 @@ tls-api-rustls = "^0.1.10"
 tokio-core     = "^0.1"
 
 [dependencies.lapin-futures-tls-api]
-version = "^0.4"
+version = "^0.5"
 path    = "../tls-api"
 
 [dev-dependencies]

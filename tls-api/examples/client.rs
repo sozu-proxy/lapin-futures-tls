@@ -18,7 +18,7 @@ fn main() {
     let handle   = core.handle();
 
     core.run(
-        "amqps://user:pass@host/vhost?heartbeat=10".connect::<tls_api_stub::TlsConnector>(handle).and_then(|client| {
+        "amqps://user:pass@host/vhost?heartbeat=10".connect::<tls_api_stub::TlsConnector, _>(handle, |_| ()).and_then(|client| {
             println!("Connected!");
             client.create_confirm_channel(ConfirmSelectOptions::default())
         }).and_then(|channel| {

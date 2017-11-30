@@ -17,7 +17,7 @@ fn main() {
     let handle   = core.handle();
 
     core.run(
-        "amqps://user:pass@host/vhost?heartbeat=10".connect(handle).and_then(|client| {
+        "amqps://user:pass@host/vhost?heartbeat=10".connect(handle, |_| ()).and_then(|client| {
             println!("Connected!");
             client.create_confirm_channel(ConfirmSelectOptions::default())
         }).and_then(|channel| {

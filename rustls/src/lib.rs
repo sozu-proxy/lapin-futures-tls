@@ -1,5 +1,5 @@
 #![deny(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/lapin-futures-rustls/0.9.0/")]
+#![doc(html_root_url = "https://docs.rs/lapin-futures-rustls/0.10.0/")]
 
 //! lapin-futures-rustls
 //!
@@ -32,7 +32,7 @@
 //!     let handle   = core.handle();
 //!
 //!     core.run(
-//!         "amqps://user:pass@host/vhost?heartbeat=10".connect(handle).and_then(|client| {
+//!         "amqps://user:pass@host/vhost?heartbeat=10".connect(handle, |_| ()).and_then(|client| {
 //!             println!("Connected!");
 //!             client.create_confirm_channel(ConfirmSelectOptions::default())
 //!         }).and_then(|channel| {
@@ -65,8 +65,8 @@ use uri::AMQPUri;
 pub trait AMQPConnectionRustlsExt: AMQPConnectionExt {
     /// Method providing a `lapin_futures::client::Client` wrapped in a `Future`
     /// using a `tokio_code::reactor::Handle`.
-    fn connect(&self, handle: Handle) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + 'static> {
-        AMQPConnectionExt::connect::<tls_api_rustls::TlsConnector>(self, handle)
+    fn connect<F: FnOnce(io::Error) + 'static>(&self, handle: Handle, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + 'static> {
+        AMQPConnectionExt::connect::<tls_api_rustls::TlsConnector, _>(self, handle, heartbeat_error_handler)
     }
 }
 

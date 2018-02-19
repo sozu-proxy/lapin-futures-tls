@@ -27,7 +27,7 @@
 //! use tokio_core::reactor::Core;
 //!
 //! fn main() {
-//!     env_logger::init().unwrap();
+//!     env_logger::init();
 //!
 //!     let mut core = Core::new().unwrap();
 //!     let handle   = core.handle();
@@ -191,7 +191,7 @@ impl AsyncWrite for AMQPStream {
 }
 
 fn open_tcp_stream(handle: &Handle, host: &str, port: u16) -> Box<Future<Item = TcpStream, Error = io::Error> + 'static> {
-    let resolver = DnsResolver::system_config(handle).map_err(|err| io::Error::new(io::ErrorKind::Other, "Failed to initialize DnsResolver"));
+    let resolver = DnsResolver::system_config(handle).map_err(|_err| io::Error::new(io::ErrorKind::Other, "Failed to initialize DnsResolver"));
     //let resolver = DnsResolver::system_config(handle).map_err(|err| io::Error::new(io::ErrorKind::Other, err));
     let name     = abstract_ns::name::Name::from_str(host).map_err(|err| io::Error::new(io::ErrorKind::Other, err));
     let handle2  = handle.clone();

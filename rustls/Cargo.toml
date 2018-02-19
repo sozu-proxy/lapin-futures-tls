@@ -22,7 +22,7 @@ version = "^0.6"
 path    = "../tls-api"
 
 [dev-dependencies]
-env_logger = "^0.4"
+env_logger = "^0.5"
 
 [badges]
 travis-ci = { repository = "sozu-proxy/lapin-futures-tls" }

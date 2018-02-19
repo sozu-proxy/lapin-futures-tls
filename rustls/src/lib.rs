@@ -26,7 +26,7 @@
 //! use tokio_core::reactor::Core;
 //!
 //! fn main() {
-//!     env_logger::init().unwrap();
+//!     env_logger::init();
 //!
 //!     let mut core = Core::new().unwrap();
 //!     let handle   = core.handle();

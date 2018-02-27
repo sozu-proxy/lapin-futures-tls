@@ -14,7 +14,7 @@ name = "lapin_futures_rustls"
 
 [dependencies]
 futures        = "^0.1"
-tls-api-rustls = "^0.1.10"
+tls-api-rustls = "^0.1.14"
 tokio-core     = "^0.1"
 
 [dependencies.lapin-futures-tls-api]

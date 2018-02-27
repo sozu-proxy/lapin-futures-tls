@@ -44,16 +44,15 @@
 //! }
 //! ```
 
-extern crate abstract_ns;
 extern crate amq_protocol;
 extern crate bytes;
 extern crate futures;
 extern crate lapin_futures;
-extern crate ns_dns_tokio;
 extern crate tls_api;
 extern crate tokio_core;
 extern crate tokio_io;
 extern crate tokio_tls_api;
+extern crate trust_dns_resolver;
 
 /// Reexport of the `lapin_futures` crate
 pub mod lapin;
@@ -61,18 +60,17 @@ pub mod lapin;
 pub mod uri;
 
 use std::io::{self, Read, Write};
-use std::str::FromStr;
+use std::net::SocketAddr;
 
-use abstract_ns::HostResolve;
 use bytes::{Buf, BufMut};
 use futures::future::Future;
 use futures::Poll;
-use ns_dns_tokio::DnsResolver;
 use tls_api::{TlsConnector, TlsConnectorBuilder};
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Handle;
 use tokio_io::{AsyncRead, AsyncWrite};
 use tokio_tls_api::TlsStream;
+use trust_dns_resolver::ResolverFuture;
 
 use lapin::client::ConnectionOptions;
 use uri::{AMQPQueryString, AMQPScheme, AMQPUri, AMQPUserInfo};
@@ -100,7 +98,7 @@ impl AMQPConnectionExt for AMQPUri {
         let query    = self.query.clone();
         let handle2  = handle.clone();
         let stream   = match self.scheme {
-            AMQPScheme::AMQP  => AMQPStream::raw(&handle, &self.authority.host, self.authority.port),
+            AMQPScheme::AMQP  => AMQPStream::raw(&handle, self.authority.host.clone(), self.authority.port),
             AMQPScheme::AMQPS => AMQPStream::tls::<C>(&handle, self.authority.host.clone(), self.authority.port),
         };
 
@@ -118,13 +116,13 @@ impl AMQPConnectionExt for str {
 }
 
 impl AMQPStream {
-    fn raw(handle: &Handle, host: &str, port: u16) -> Box<Future<Item = Self, Error = io::Error> + 'static> {
+    fn raw(handle: &Handle, host: String, port: u16) -> Box<Future<Item = Self, Error = io::Error> + 'static> {
         Box::new(open_tcp_stream(handle, host, port).map(AMQPStream::Raw))
     }
 
     fn tls<C: TlsConnector + 'static>(handle: &Handle, host: String, port: u16) -> Box<Future<Item = Self, Error = io::Error> + 'static> {
         Box::new(
-            open_tcp_stream(handle, &host, port).join(
+            open_tcp_stream(handle, host.clone(), port).join(
                 futures::future::result(C::builder().and_then(TlsConnectorBuilder::build).map_err(From::from))
             ).and_then(move |(stream, connector)| {
                 tokio_tls_api::connect_async(&connector, &host, stream).map_err(From::from).map(Box::new).map(AMQPStream::Tls)
@@ -190,20 +188,17 @@ impl AsyncWrite for AMQPStream {
     }
 }
 
-fn open_tcp_stream(handle: &Handle, host: &str, port: u16) -> Box<Future<Item = TcpStream, Error = io::Error> + 'static> {
-    let resolver = DnsResolver::system_config(handle).map_err(|_err| io::Error::new(io::ErrorKind::Other, "Failed to initialize DnsResolver"));
-    //let resolver = DnsResolver::system_config(handle).map_err(|err| io::Error::new(io::ErrorKind::Other, err));
-    let name     = abstract_ns::name::Name::from_str(host).map_err(|err| io::Error::new(io::ErrorKind::Other, err));
-    let handle2  = handle.clone();
+fn open_tcp_stream(handle: &Handle, host: String, port: u16) -> Box<Future<Item = TcpStream, Error = io::Error> + 'static> {
+    let resolver = ResolverFuture::from_system_conf(handle).map_err(From::from);
+    let host     = host.clone();
+    let handle   = handle.clone();
     Box::new(
-        futures::future::result(resolver).join(futures::future::result(name)).and_then(move |(resolver, name)| {
-            resolver.resolve_host(&name).map_err(|err| io::Error::new(io::ErrorKind::Other, err))
-        }).map(move |ip_list| {
-            ip_list.with_port(port)
-        }).and_then(move |address| {
-            address.pick_one().ok_or_else(|| io::Error::new(io::ErrorKind::AddrNotAvailable, "Couldn't resolve hostname"))
-        }).and_then(move |sockaddr| {
-            TcpStream::connect(&sockaddr, &handle2)
+        futures::future::result(resolver).and_then(move |resolver| {
+            resolver.lookup_ip(&host).map_err(From::from)
+        }).and_then(|response| {
+            response.iter().next().ok_or_else(|| io::Error::new(io::ErrorKind::AddrNotAvailable, "Couldn't resolve hostname"))
+        }).and_then(move |ipaddr| {
+            TcpStream::connect(&SocketAddr::new(ipaddr, port), &handle)
         })
     )
 }

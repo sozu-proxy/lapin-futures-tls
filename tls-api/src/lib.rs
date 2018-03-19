@@ -96,13 +96,13 @@ impl AMQPConnectionExt for AMQPUri {
         let userinfo = self.authority.userinfo.clone();
         let vhost    = self.vhost.clone();
         let query    = self.query.clone();
-        let handle2  = handle.clone();
         let stream   = match self.scheme {
             AMQPScheme::AMQP  => AMQPStream::raw(&handle, self.authority.host.clone(), self.authority.port),
             AMQPScheme::AMQPS => AMQPStream::tls::<C>(&handle, self.authority.host.clone(), self.authority.port),
         };
+        let handle   = handle.clone();
 
-        Box::new(stream.and_then(move |stream| connect_stream(stream, handle2, userinfo, vhost, &query, heartbeat_error_handler)))
+        Box::new(stream.and_then(move |stream| connect_stream(stream, handle, userinfo, vhost, &query, heartbeat_error_handler)))
     }
 }
 

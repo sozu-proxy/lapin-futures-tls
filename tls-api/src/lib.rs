@@ -88,7 +88,6 @@ pub enum AMQPStream {
 /// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
 pub trait AMQPConnectionExt {
     /// Method providing a `lapin_futures::client::Client` wrapped in a `Future`
-    /// using a `tokio_code::reactor::Handle`.
     fn connect<C: TlsConnector + 'static, F: FnOnce(io::Error) + 'static>(&self, handle: Handle, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + 'static>;
 }
 
@@ -98,10 +97,9 @@ impl AMQPConnectionExt for AMQPUri {
         let vhost    = self.vhost.clone();
         let query    = self.query.clone();
         let stream   = match self.scheme {
-            AMQPScheme::AMQP  => AMQPStream::raw(&handle, self.authority.host.clone(), self.authority.port),
-            AMQPScheme::AMQPS => AMQPStream::tls::<C>(&handle, self.authority.host.clone(), self.authority.port),
+            AMQPScheme::AMQP  => AMQPStream::raw(self.authority.host.clone(), self.authority.port),
+            AMQPScheme::AMQPS => AMQPStream::tls::<C>(self.authority.host.clone(), self.authority.port),
         };
-        let handle   = handle.clone();
 
         Box::new(stream.and_then(move |stream| connect_stream(stream, handle, userinfo, vhost, &query, heartbeat_error_handler)))
     }
@@ -117,13 +115,13 @@ impl AMQPConnectionExt for str {
 }
 
 impl AMQPStream {
-    fn raw(handle: &Handle, host: String, port: u16) -> Box<Future<Item = Self, Error = io::Error> + 'static> {
-        Box::new(open_tcp_stream(handle, host, port).map(AMQPStream::Raw))
+    fn raw(host: String, port: u16) -> Box<Future<Item = Self, Error = io::Error> + 'static> {
+        Box::new(open_tcp_stream(host, port).map(AMQPStream::Raw))
     }
 
-    fn tls<C: TlsConnector + 'static>(handle: &Handle, host: String, port: u16) -> Box<Future<Item = Self, Error = io::Error> + 'static> {
+    fn tls<C: TlsConnector + 'static>(host: String, port: u16) -> Box<Future<Item = Self, Error = io::Error> + 'static> {
         Box::new(
-            open_tcp_stream(handle, host.clone(), port).join(
+            open_tcp_stream(host.clone(), port).join(
                 futures::future::result(C::builder().and_then(TlsConnectorBuilder::build).map_err(From::from))
             ).and_then(move |(stream, connector)| {
                 tokio_tls_api::connect_async(&connector, &host, stream).map_err(From::from).map(Box::new).map(AMQPStream::Tls)
@@ -189,13 +187,13 @@ impl AsyncWrite for AMQPStream {
     }
 }
 
-fn open_tcp_stream(handle: &Handle, host: String, port: u16) -> Box<Future<Item = TcpStream, Error = io::Error> + 'static> {
-    let resolver = ResolverFuture::from_system_conf(handle).map_err(From::from);
-    let host     = host.clone();
+fn open_tcp_stream(host: String, port: u16) -> Box<Future<Item = TcpStream, Error = io::Error> + 'static> {
+    let host = host.clone();
+
     Box::new(
-        futures::future::result(resolver).and_then(move |resolver| {
-            resolver.lookup_ip(&host).map_err(From::from)
-        }).and_then(|response| {
+        futures::future::result(ResolverFuture::from_system_conf()).flatten().and_then(move |resolver| {
+            resolver.lookup_ip(host.as_str())
+        }).map_err(From::from).and_then(|response| {
             response.iter().next().ok_or_else(|| io::Error::new(io::ErrorKind::AddrNotAvailable, "Couldn't resolve hostname"))
         }).and_then(move |ipaddr| {
             TcpStream::connect(&SocketAddr::new(ipaddr, port))

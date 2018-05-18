@@ -32,7 +32,7 @@
 //!     let mut core = Core::new().unwrap();
 //!
 //!     core.run(
-//!         "amqps://user:pass@host/vhost?heartbeat=10".connect::<tls_api_stub::TlsConnector, _>(|_| ()).and_then(|client| {
+//!         "amqps://user:pass@host/vhost?heartbeat=10".connect::<tls_api_stub::TlsConnector>(|_| ()).and_then(|client| {
 //!             println!("Connected!");
 //!             client.create_confirm_channel(ConfirmSelectOptions::default())
 //!         }).and_then(|channel| {
@@ -84,13 +84,13 @@ pub enum AMQPStream {
 }
 
 /// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
-pub trait AMQPConnectionExt {
+pub trait AMQPConnectionExt<F: FnOnce(io::Error) + Send + 'static> {
     /// Method providing a `lapin_futures::client::Client` wrapped in a `Future`
-    fn connect<C: TlsConnector + Send + 'static, F: FnOnce(io::Error) + Send + 'static>(&self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static>;
+    fn connect<C: TlsConnector + Send + 'static>(&self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static>;
 }
 
-impl AMQPConnectionExt for AMQPUri {
-    fn connect<C: TlsConnector + Send + 'static, F: FnOnce(io::Error) + Send + 'static>(&self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static> {
+impl<F: FnOnce(io::Error) + Send + 'static> AMQPConnectionExt<F> for AMQPUri {
+    fn connect<C: TlsConnector + Send + 'static>(&self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static> {
         let userinfo = self.authority.userinfo.clone();
         let vhost    = self.vhost.clone();
         let query    = self.query.clone();
@@ -103,10 +103,10 @@ impl AMQPConnectionExt for AMQPUri {
     }
 }
 
-impl AMQPConnectionExt for str {
-    fn connect<C: TlsConnector + Send + 'static, F: FnOnce(io::Error) + Send + 'static>(&self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static> {
+impl<F: FnOnce(io::Error) + Send + 'static> AMQPConnectionExt<F> for str {
+    fn connect<C: TlsConnector + Send + 'static>(&self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static> {
         match self.parse::<AMQPUri>() {
-            Ok(uri)  => uri.connect::<C, F>(heartbeat_error_handler),
+            Ok(uri)  => uri.connect::<C>(heartbeat_error_handler),
             Err(err) => Box::new(futures::future::err(io::Error::new(io::ErrorKind::Other, err))),
         }
     }

@@ -26,8 +26,8 @@ trust-dns-resolver = "^0.9"
 
 [dev-dependencies]
 env_logger   = "^0.5"
-tokio-core   = "^0.1"
 tls-api-stub = "^0.1"
+tokio        = "^0.1.6"
 
 [badges]
 travis-ci = { repository = "sozu-proxy/lapin-futures-tls" }

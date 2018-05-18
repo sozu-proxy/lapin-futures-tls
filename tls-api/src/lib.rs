@@ -17,29 +17,30 @@
 //! extern crate futures;
 //! extern crate lapin_futures_tls_api;
 //! extern crate tls_api_stub;
-//! extern crate tokio_core;
+//! extern crate tokio;
 //!
 //! use lapin_futures_tls_api::lapin;
 //!
 //! use futures::future::Future;
 //! use lapin::channel::ConfirmSelectOptions;
 //! use lapin_futures_tls_api::AMQPConnectionExt;
-//! use tokio_core::reactor::Core;
 //!
 //! fn main() {
 //!     env_logger::init();
 //!
-//!     let mut core = Core::new().unwrap();
-//!
-//!     core.run(
-//!         "amqps://user:pass@host/vhost?heartbeat=10".connect::<tls_api_stub::TlsConnector>(|_| ()).and_then(|client| {
+//!     tokio::run(
+//!         "amqps://user:pass@host/vhost?heartbeat=10".connect::<tls_api_stub::TlsConnector>(|err| {
+//!             eprintln!("heartbeat error: {:?}", err);
+//!         }).and_then(|client| {
 //!             println!("Connected!");
 //!             client.create_confirm_channel(ConfirmSelectOptions::default())
 //!         }).and_then(|channel| {
 //!             println!("Closing channel.");
 //!             channel.close(200, "Bye")
+//!         }).map_err(|err| {
+//!             eprintln!("amqp error: {:?}", err);
 //!         })
-//!     ).unwrap();
+//!     );
 //! }
 //! ```
 

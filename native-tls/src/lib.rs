@@ -29,10 +29,9 @@
 //!     env_logger::init();
 //!
 //!     let mut core = Core::new().unwrap();
-//!     let handle   = core.handle();
 //!
 //!     core.run(
-//!         "amqps://user:pass@host/vhost?heartbeat=10".connect(handle, |_| ()).and_then(|client| {
+//!         "amqps://user:pass@host/vhost?heartbeat=10".connect(|_| ()).and_then(|client| {
 //!             println!("Connected!");
 //!             client.create_confirm_channel(ConfirmSelectOptions::default())
 //!         }).and_then(|channel| {
@@ -57,16 +56,14 @@ use std::io;
 
 use futures::future::Future;
 use lapin_futures_tls_api::{AMQPConnectionExt, AMQPStream};
-use tokio_core::reactor::Handle;
 
 use uri::AMQPUri;
 
 /// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
 pub trait AMQPConnectionNativeTlsExt: AMQPConnectionExt {
     /// Method providing a `lapin_futures::client::Client` wrapped in a `Future`
-    /// using a `tokio_code::reactor::Handle`.
-    fn connect<F: FnOnce(io::Error) + 'static>(&self, handle: Handle, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + 'static> {
-        AMQPConnectionExt::connect::<tls_api_native_tls::TlsConnector, _>(self, handle, heartbeat_error_handler)
+    fn connect<F: FnOnce(io::Error) + Send + 'static>(&self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static> {
+        AMQPConnectionExt::connect::<tls_api_native_tls::TlsConnector, F>(self, heartbeat_error_handler)
     }
 }
 

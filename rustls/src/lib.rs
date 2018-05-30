@@ -60,12 +60,12 @@ use lapin_futures_tls_api::{AMQPConnectionExt, AMQPStream};
 use uri::AMQPUri;
 
 /// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
-pub trait AMQPConnectionRustlsExt<F: FnOnce(io::Error) + Send + 'static>: AMQPConnectionExt<F> {
+pub trait AMQPConnectionRustlsExt<F: FnOnce(io::Error) + Send + 'static>: AMQPConnectionExt<F> where Self: Sized {
     /// Method providing a `lapin_futures::client::Client` wrapped in a `Future`
-    fn connect(&self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static> {
+    fn connect(self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static> {
         AMQPConnectionExt::connect::<tls_api_rustls::TlsConnector>(self, heartbeat_error_handler)
     }
 }
 
 impl<F: FnOnce(io::Error) + Send + 'static> AMQPConnectionRustlsExt<F> for AMQPUri {}
-impl<F: FnOnce(io::Error) + Send + 'static> AMQPConnectionRustlsExt<F> for str {}
+impl<'a, F: FnOnce(io::Error) + Send + 'static> AMQPConnectionRustlsExt<F> for &'a str {}

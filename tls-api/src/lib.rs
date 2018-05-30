@@ -73,7 +73,7 @@ use tokio_tls_api::TlsStream;
 use trust_dns_resolver::ResolverFuture;
 
 use lapin::client::ConnectionOptions;
-use uri::{AMQPQueryString, AMQPScheme, AMQPUri, AMQPUserInfo};
+use uri::{AMQPScheme, AMQPUri};
 
 /// Represents either a raw `TcpStream` or a `TlsStream` backend by `tokio-tls-api`.
 /// The `TlsStream` is wrapped in a `Box` to keep the enum footprint minimal.
@@ -92,15 +92,13 @@ pub trait AMQPConnectionExt<F: FnOnce(io::Error) + Send + 'static> {
 
 impl<F: FnOnce(io::Error) + Send + 'static> AMQPConnectionExt<F> for AMQPUri {
     fn connect<C: TlsConnector + Send + 'static>(&self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static> {
-        let userinfo = self.authority.userinfo.clone();
-        let vhost    = self.vhost.clone();
-        let query    = self.query.clone();
-        let stream   = match self.scheme {
+        let uri    = self.clone();
+        let stream = match self.scheme {
             AMQPScheme::AMQP  => AMQPStream::raw(self.authority.host.clone(), self.authority.port),
             AMQPScheme::AMQPS => AMQPStream::tls::<C>(self.authority.host.clone(), self.authority.port),
         };
 
-        Box::new(stream.and_then(move |stream| connect_stream(stream, userinfo, vhost, &query, heartbeat_error_handler)))
+        Box::new(stream.and_then(move |stream| connect_stream(stream, uri, heartbeat_error_handler)))
     }
 }
 
@@ -200,14 +198,14 @@ fn open_tcp_stream(host: String, port: u16) -> Box<Future<Item = TcpStream, Erro
     )
 }
 
-fn connect_stream<T: AsyncRead + AsyncWrite + Send + Sync + 'static, F: FnOnce(io::Error) + Send + 'static>(stream: T, credentials: AMQPUserInfo, vhost: String, query: &AMQPQueryString, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<T>, Error = io::Error> + Send + 'static> {
+fn connect_stream<T: AsyncRead + AsyncWrite + Send + Sync + 'static, F: FnOnce(io::Error) + Send + 'static>(stream: T, uri: AMQPUri, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<T>, Error = io::Error> + Send + 'static> {
     let defaults = ConnectionOptions::default();
     Box::new(lapin::client::Client::connect(stream, &ConnectionOptions {
-        username:  credentials.username,
-        password:  credentials.password,
-        vhost:     vhost,
-        frame_max: query.frame_max.unwrap_or_else(|| defaults.frame_max),
-        heartbeat: query.heartbeat.unwrap_or_else(|| defaults.heartbeat),
+        username:  uri.authority.userinfo.username,
+        password:  uri.authority.userinfo.password,
+        vhost:     uri.vhost,
+        frame_max: uri.query.frame_max.unwrap_or_else(|| defaults.frame_max),
+        heartbeat: uri.query.heartbeat.unwrap_or_else(|| defaults.heartbeat),
     }).map(move |(client, heartbeat_future_fn)| {
         let heartbeat_client = client.clone();
         tokio_executor::spawn(heartbeat_future_fn(&heartbeat_client).map_err(heartbeat_error_handler));

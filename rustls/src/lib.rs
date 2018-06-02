@@ -30,10 +30,12 @@
 //!     tokio::run(
 //!         "amqps://user:pass@host/vhost?heartbeat=10".connect(|err| {
 //!             eprintln!("heartbeat error: {:?}", err);
-//!         }).and_then(|client| {
+//!         }).and_then(|(client, heartbeat_handle)| {
 //!             println!("Connected!");
-//!             client.create_confirm_channel(ConfirmSelectOptions::default())
-//!         }).and_then(|channel| {
+//!             client.create_confirm_channel(ConfirmSelectOptions::default()).map(|channel| (channel, heartbeat_handle))
+//!         }).and_then(|(channel, heartbeat_handle)| {
+//!             println!("Stopping heartbeat.");
+//!             heartbeat_handle.stop();
 //!             println!("Closing channel.");
 //!             channel.close(200, "Bye")
 //!         }).map_err(|err| {
@@ -62,7 +64,7 @@ use uri::AMQPUri;
 /// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
 pub trait AMQPConnectionRustlsExt<F: FnOnce(io::Error) + Send + 'static>: AMQPConnectionExt<F> where Self: Sized {
     /// Method providing a `lapin_futures::client::Client` wrapped in a `Future`
-    fn connect(self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static> {
+    fn connect(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static> {
         AMQPConnectionExt::connect::<tls_api_rustls::TlsConnector>(self, heartbeat_error_handler)
     }
 }

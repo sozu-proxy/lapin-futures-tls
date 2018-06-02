@@ -16,10 +16,12 @@ fn main() {
     tokio::run(
         "amqps://user:pass@host/vhost?heartbeat=10".connect::<tls_api_stub::TlsConnector>(|err| {
             eprintln!("heartbeat error: {:?}", err);
-        }).and_then(|client| {
+        }).and_then(|(client, heartbeat_handle)| {
             println!("Connected!");
-            client.create_confirm_channel(ConfirmSelectOptions::default())
-        }).and_then(|channel| {
+            client.create_confirm_channel(ConfirmSelectOptions::default()).map(|channel| (channel, heartbeat_handle))
+        }).and_then(|(channel, heartbeat_handle)| {
+            println!("Stopping heartbeat.");
+            heartbeat_handle.stop();
             println!("Closing channel.");
             channel.close(200, "Bye")
         }).map_err(|err| {

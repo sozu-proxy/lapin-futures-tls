@@ -1,5 +1,5 @@
 #![deny(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/lapin-futures-tls-api/0.8.0/")]
+#![doc(html_root_url = "https://docs.rs/lapin-futures-tls-api/0.9.0/")]
 
 //! lapin-futures-tls-api
 //!
@@ -200,7 +200,7 @@ fn open_tcp_stream(host: String, port: u16) -> Box<Future<Item = TcpStream, Erro
 }
 
 fn connect_stream<T: AsyncRead + AsyncWrite + Send + Sync + 'static, F: FnOnce(io::Error) + Send + 'static>(stream: T, uri: AMQPUri, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<T>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static> {
-    Box::new(lapin::client::Client::connect(stream, &ConnectionOptions::from_uri(uri)).map(move |(client, mut heartbeat_future)| {
+    Box::new(lapin::client::Client::connect(stream, ConnectionOptions::from_uri(uri)).map(move |(client, mut heartbeat_future)| {
         let heartbeat_handle = heartbeat_future.handle().unwrap();
         tokio_executor::spawn(heartbeat_future.map_err(heartbeat_error_handler));
         (client, heartbeat_handle)

@@ -4,8 +4,9 @@
 //! lapin-futures-tls-api
 //!
 //! This library offers a nice integration of `tls-api` with the `lapin-futures` library.
-//! It uses `amq-protocol` URI parsing feature and adds a `connect` method to `AMQPUri`
-//! which will provide you with a `lapin_futures::client::Client` wrapped in a `Future`.
+//! It uses `amq-protocol` URI parsing feature and adds the `connect` and `connect_cancellable`
+//! methods to `AMQPUri` which will provide you with a `lapin_futures::client::Client` and
+//! optionally a `lapin_futures::client::HeartbeatHandle` wrapped in a `Future`.
 //!
 //! It autodetects whether you're using `amqp` or `amqps` and opens either a raw `TcpStream`
 //! or a `TlsStream` using `tls-api` as the SSL api.
@@ -29,7 +30,7 @@
 //!     env_logger::init();
 //!
 //!     tokio::run(
-//!         "amqps://user:pass@host/vhost?heartbeat=10".connect::<tls_api_stub::TlsConnector>(|err| {
+//!         "amqps://user:pass@host/vhost?heartbeat=10".connect_cancellable::<tls_api_stub::TlsConnector>(|err| {
 //!             eprintln!("heartbeat error: {:?}", err);
 //!         }).and_then(|(client, heartbeat_handle)| {
 //!             println!("Connected!");
@@ -89,30 +90,45 @@ pub enum AMQPStream {
 /// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
 pub trait AMQPConnectionExt<F: FnOnce(io::Error) + Send + 'static> {
     /// Method providing a `lapin_futures::client::Client` wrapped in a `Future`
-    fn connect<C: TlsConnector + Send + 'static>(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static>;
+    fn connect<C: TlsConnector + Send + 'static>(self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static>;
+    /// Method providing a `lapin_futures::client::Client` and `lapin_futures::client::HeartbeatHandle` wrapped in a `Future`
+    fn connect_cancellable<C: TlsConnector + Send + 'static>(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static>;
 }
 
 impl<F: FnOnce(io::Error) + Send + 'static> AMQPConnectionExt<F> for AMQPUri {
-    fn connect<C: TlsConnector + Send + 'static>(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static> {
-        let stream = match self.scheme {
-            AMQPScheme::AMQP  => AMQPStream::raw(self.authority.host.clone(), self.authority.port),
-            AMQPScheme::AMQPS => AMQPStream::tls::<C>(self.authority.host.clone(), self.authority.port),
-        };
+    fn connect<C: TlsConnector + Send + 'static>(self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static> {
+        Box::new(AMQPStream::from_amqp_uri::<C>(&self).and_then(move |stream| connect_stream(stream, self, heartbeat_error_handler, false)).map(|(client, _)| client))
+    }
 
-        Box::new(stream.and_then(move |stream| connect_stream(stream, self, heartbeat_error_handler)))
+    fn connect_cancellable<C: TlsConnector + Send + 'static>(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static> {
+        Box::new(AMQPStream::from_amqp_uri::<C>(&self).and_then(move |stream| connect_stream(stream, self, heartbeat_error_handler, true)).map(|(client, heartbeat_handle)| (client, heartbeat_handle.unwrap())))
     }
 }
 
 impl<'a, F: FnOnce(io::Error) + Send + 'static> AMQPConnectionExt<F> for &'a str {
-    fn connect<C: TlsConnector + Send + 'static>(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static> {
+    fn connect<C: TlsConnector + Send + 'static>(self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static> {
         match self.parse::<AMQPUri>() {
             Ok(uri)  => uri.connect::<C>(heartbeat_error_handler),
+            Err(err) => Box::new(futures::future::err(io::Error::new(io::ErrorKind::Other, err))),
+        }
+    }
+
+    fn connect_cancellable<C: TlsConnector + Send + 'static>(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static> {
+        match self.parse::<AMQPUri>() {
+            Ok(uri)  => uri.connect_cancellable::<C>(heartbeat_error_handler),
             Err(err) => Box::new(futures::future::err(io::Error::new(io::ErrorKind::Other, err))),
         }
     }
 }
 
 impl AMQPStream {
+    fn from_amqp_uri<C: TlsConnector + Send + 'static>(uri: &AMQPUri) -> Box<Future<Item = Self, Error = io::Error> + Send + 'static> {
+        match uri.scheme {
+            AMQPScheme::AMQP  => AMQPStream::raw(uri.authority.host.clone(), uri.authority.port),
+            AMQPScheme::AMQPS => AMQPStream::tls::<C>(uri.authority.host.clone(), uri.authority.port),
+        }
+    }
+
     fn raw(host: String, port: u16) -> Box<Future<Item = Self, Error = io::Error> + Send + 'static> {
         Box::new(open_tcp_stream(host, port).map(AMQPStream::Raw))
     }
@@ -199,9 +215,9 @@ fn open_tcp_stream(host: String, port: u16) -> Box<Future<Item = TcpStream, Erro
     )
 }
 
-fn connect_stream<T: AsyncRead + AsyncWrite + Send + Sync + 'static, F: FnOnce(io::Error) + Send + 'static>(stream: T, uri: AMQPUri, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<T>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static> {
+fn connect_stream<T: AsyncRead + AsyncWrite + Send + Sync + 'static, F: FnOnce(io::Error) + Send + 'static>(stream: T, uri: AMQPUri, heartbeat_error_handler: F, create_heartbeat_handle: bool) -> Box<Future<Item = (lapin::client::Client<T>, Option<lapin::client::HeartbeatHandle>), Error = io::Error> + Send + 'static> {
     Box::new(lapin::client::Client::connect(stream, ConnectionOptions::from_uri(uri)).map(move |(client, mut heartbeat_future)| {
-        let heartbeat_handle = heartbeat_future.handle().unwrap();
+        let heartbeat_handle = if create_heartbeat_handle { heartbeat_future.handle() } else { None };
         tokio_executor::spawn(heartbeat_future.map_err(heartbeat_error_handler));
         (client, heartbeat_handle)
     }))

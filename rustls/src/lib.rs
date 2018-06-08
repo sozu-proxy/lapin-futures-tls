@@ -4,8 +4,9 @@
 //! lapin-futures-rustls
 //!
 //! This library offers a nice integration of `rustls` with the `lapin-futures` library.
-//! It uses `amq-protocol` URI parsing feature and adds a `connect` method to `AMQPUri`
-//! which will provide you with a `lapin_futures::client::Client` wrapped in a `Future`.
+//! It uses `amq-protocol` URI parsing feature and adds the `connect` and `connect_cancellable`
+//! methods to `AMQPUri` which will provide you with a `lapin_futures::client::Client` and
+//! optionally a `lapin_futures::client::HeartbeatHandle` wrapped in a `Future`.
 //!
 //! It autodetects whether you're using `amqp` or `amqps` and opens either a raw `TcpStream`
 //! or a `TlsStream` using `rustls` as the SSL engine.
@@ -28,7 +29,7 @@
 //!     env_logger::init();
 //!
 //!     tokio::run(
-//!         "amqps://user:pass@host/vhost?heartbeat=10".connect(|err| {
+//!         "amqps://user:pass@host/vhost?heartbeat=10".connect_cancellable(|err| {
 //!             eprintln!("heartbeat error: {:?}", err);
 //!         }).and_then(|(client, heartbeat_handle)| {
 //!             println!("Connected!");
@@ -64,8 +65,13 @@ use uri::AMQPUri;
 /// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
 pub trait AMQPConnectionRustlsExt<F: FnOnce(io::Error) + Send + 'static>: AMQPConnectionExt<F> where Self: Sized {
     /// Method providing a `lapin_futures::client::Client` wrapped in a `Future`
-    fn connect(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static> {
+    fn connect(self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static> {
         AMQPConnectionExt::connect::<tls_api_rustls::TlsConnector>(self, heartbeat_error_handler)
+    }
+
+    /// Method providing a `lapin_futures::client::Client` and a `lapin_futures::client::HeartbeatHandle` wrapped in a `Future`
+    fn connect_cancellable(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static> {
+        AMQPConnectionExt::connect_cancellable::<tls_api_rustls::TlsConnector>(self, heartbeat_error_handler)
     }
 }
 

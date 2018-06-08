@@ -13,7 +13,7 @@ fn main() {
     env_logger::init();
 
     tokio::run(
-        "amqps://user:pass@host/vhost?heartbeat=10".connect(|err| {
+        "amqps://user:pass@host/vhost?heartbeat=10".connect_cancellable(|err| {
             eprintln!("heartbeat error: {:?}", err);
         }).and_then(|(client, heartbeat_handle)| {
             println!("Connected!");

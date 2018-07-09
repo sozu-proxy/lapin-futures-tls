@@ -1,11 +1,28 @@
-sudo: false
 language: rust
 
+sudo: required
+
+addons:
+    apt:
+        packages:
+            - libssl-dev
+
+cache: cargo
+
 rust:
+    - 1.26.0
     - stable
     - beta
     - nightly
 
+services: rabbitmq
+
 script:
     - cargo build --verbose --all
     - cargo test  --verbose --all
+
+after_success: |
+    if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then
+        `RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install --force cargo-tarpaulin`
+        cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID
+    fi

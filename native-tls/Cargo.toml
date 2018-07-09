@@ -17,7 +17,7 @@ futures            = "^0.1"
 tls-api-native-tls = "^0.1.14"
 
 [dependencies.lapin-futures-tls-api]
-version = "^0.10"
+version = "^0.11"
 path    = "../tls-api"
 
 [dev-dependencies]

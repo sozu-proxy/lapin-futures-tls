@@ -1,1 +1,1 @@
-pub use amq_protocol::uri::*;
+pub use lapin_futures::uri::*;

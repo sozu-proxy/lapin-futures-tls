@@ -47,7 +47,6 @@
 //! }
 //! ```
 
-extern crate amq_protocol;
 extern crate bytes;
 extern crate futures;
 extern crate lapin_futures;

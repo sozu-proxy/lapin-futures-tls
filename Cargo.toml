@@ -1,2 +1,2 @@
 [workspace]
-members = [ "native-tls", "openssl", "rustls", "tls-api" ]
+members = [ "internal", "native-tls", "openssl", "rustls", "tls-api" ]

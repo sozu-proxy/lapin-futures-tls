@@ -1,0 +1,32 @@
+[package]
+name          = "lapin-futures-tls-internal"
+version       = "0.1.0" # remember to update html_root_url
+authors       = ["Marc-Antoine Perennou <%arc-Antoine@Perennou.com>"]
+description   = "Integration of tls engines with lapin-futures"
+repository    = "https://github.com/sozu-proxy/lapin-futures-tls"
+documentation = "https://docs.rs/lapin-futures-tls-internal"
+keywords      = ["amqp","rabbitmq","futures","tokio","tls"]
+categories    = ["api-bindings","network-programming"]
+license       = "BSD-2-Clause"
+
+[lib]
+name = "lapin_futures_tls_internal"
+
+[dependencies]
+bytes              = "^0.4"
+futures            = "^0.1"
+lapin-futures      = "^0.14"
+tokio-executor     = "^0.1"
+tokio-io           = "^0.1"
+tokio-tcp          = "^0.1"
+trust-dns-resolver = "^0.9"
+
+[dev-dependencies]
+env_logger = "^0.5"
+native-tls = "^0.2"
+tokio      = "^0.1.6"
+tokio-tls  = "^0.2"
+
+[badges]
+travis-ci = { repository = "sozu-proxy/lapin-futures-tls" }
+appveyor  = { repository = "Keruspe/lapin-futures-tls" }

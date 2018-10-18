@@ -1,6 +1,6 @@
 [package]
 name          = "lapin-futures-tls-api"
-version       = "0.12.0" # remember to update html_root_url
+version       = "0.13.0" # remember to update html_root_url
 authors       = ["Marc-Antoine Perennou <%arc-Antoine@Perennou.com>"]
 description   = "Integration of tls-api with lapin-futures"
 repository    = "https://github.com/sozu-proxy/lapin-futures-tls"

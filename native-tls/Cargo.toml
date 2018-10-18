@@ -13,15 +13,14 @@ license       = "BSD-2-Clause"
 name = "lapin_futures_native_tls"
 
 [dependencies]
-bytes              = "^0.4"
-futures            = "^0.1"
-lapin-futures      = "^0.14"
-native-tls         = "^0.2"
-tokio-executor     = "^0.1"
-tokio-io           = "^0.1"
-tokio-tcp          = "^0.1"
-tokio-tls          = "^0.2"
-trust-dns-resolver = "^0.9"
+futures    = "^0.1"
+native-tls = "^0.2"
+tokio-tcp  = "^0.1"
+tokio-tls  = "^0.2"
+
+[dependencies.lapin-futures-tls-internal]
+version = "^0.1"
+path    = "../internal"
 
 [dev-dependencies]
 env_logger = "^0.5"

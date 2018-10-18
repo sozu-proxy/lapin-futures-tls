@@ -13,15 +13,14 @@ license       = "BSD-2-Clause"
 name = "lapin_futures_rustls"
 
 [dependencies]
-bytes              = "^0.4"
-futures            = "^0.1"
-lapin-futures      = "^0.14"
-tokio-executor     = "^0.1"
-tokio-io           = "^0.1"
-tokio-rustls       = "^0.8"
-tokio-tcp          = "^0.1"
-trust-dns-resolver = "^0.9"
-webpki-roots       = "^0.15.0"
+futures      = "^0.1"
+tokio-rustls = "^0.8"
+tokio-tcp    = "^0.1"
+webpki-roots = "^0.15.0"
+
+[dependencies.lapin-futures-tls-internal]
+version = "^0.1"
+path    = "../internal"
 
 [dev-dependencies]
 env_logger = "^0.5"

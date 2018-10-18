@@ -46,14 +46,10 @@
 //! }
 //! ```
 
-extern crate bytes;
 extern crate futures;
-extern crate lapin_futures;
-extern crate tokio_executor;
-extern crate tokio_io;
-extern crate tokio_tcp;
+extern crate lapin_futures_tls_internal;
 extern crate tokio_rustls;
-extern crate trust_dns_resolver;
+extern crate tokio_tcp;
 extern crate webpki_roots;
 
 /// Reexport of the `lapin_futures` crate
@@ -63,167 +59,38 @@ pub mod uri;
 
 use tokio_rustls::{rustls, webpki};
 
-use std::io::{self, Read, Write};
-use std::net::SocketAddr;
+use std::io;
 use std::sync::Arc;
 
-use bytes::{Buf, BufMut};
 use futures::future::Future;
-use futures::Poll;
+use lapin_futures_tls_internal::{AMQPConnectionTlsExt, AMQPStream};
 use rustls::{ClientConfig, ClientSession};
-use tokio_io::{AsyncRead, AsyncWrite};
-use tokio_rustls::{TlsConnector, TlsStream};
 use tokio_tcp::TcpStream;
-use trust_dns_resolver::ResolverFuture;
+use tokio_rustls::{TlsConnector, TlsStream};
 
-use lapin::client::ConnectionOptions;
-use uri::{AMQPScheme, AMQPUri};
+use uri::AMQPUri;
 
-/// Represents either a raw `TcpStream` or a `TlsStream` backend by `tokio-rustls`.
-/// The `TlsStream` is wrapped in a `Box` to keep the enum footprint minimal.
-pub enum AMQPStream {
-    /// The raw `TcpStream` used for basic AMQP connections.
-    Raw(TcpStream),
-    /// The `TlsStream` used for AMQPs connections.
-    Tls(Box<TlsStream<TcpStream, ClientSession>>),
+fn connector(host: String, stream: TcpStream) -> Box<Future<Item = Box<TlsStream<TcpStream, ClientSession>>, Error = io::Error> + Send + 'static> {
+    let mut config = ClientConfig::new();
+    config.root_store.add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
+    let config = TlsConnector::from(Arc::new(config));
+
+    Box::new(futures::future::result(webpki::DNSNameRef::try_from_ascii_str(&host).map(move |domain| domain.to_owned()).map_err(|()| io::Error::new(io::ErrorKind::Other, "Invalid domain name"))).and_then(move |domain| {
+        config.connect(domain.as_ref(), stream).map_err(From::from).map(Box::new)
+    }))
 }
 
 /// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
-pub trait AMQPConnectionRustlsExt<F: FnOnce(io::Error) + Send + 'static> {
+pub trait AMQPConnectionRustlsExt<F: FnOnce(io::Error) + Send + 'static> : AMQPConnectionTlsExt<TlsStream<TcpStream, ClientSession>, F> where Self: Sized {
     /// Method providing a `lapin_futures::client::Client` wrapped in a `Future`
-    fn connect(self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static>;
+    fn connect(self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream<TlsStream<TcpStream, ClientSession>>>, Error = io::Error> + Send + 'static> {
+        AMQPConnectionTlsExt::connect(self, heartbeat_error_handler, connector)
+    }
     /// Method providing a `lapin_futures::client::Client` and `lapin_futures::client::HeartbeatHandle` wrapped in a `Future`
-    fn connect_cancellable(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static>;
-}
-
-impl<F: FnOnce(io::Error) + Send + 'static> AMQPConnectionRustlsExt<F> for AMQPUri {
-    fn connect(self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static> {
-        Box::new(AMQPStream::from_amqp_uri(&self).and_then(move |stream| connect_stream(stream, self, heartbeat_error_handler, false)).map(|(client, _)| client))
-    }
-
-    fn connect_cancellable(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static> {
-        Box::new(AMQPStream::from_amqp_uri(&self).and_then(move |stream| connect_stream(stream, self, heartbeat_error_handler, true)).map(|(client, heartbeat_handle)| (client, heartbeat_handle.unwrap())))
+    fn connect_cancellable(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream<TlsStream<TcpStream, ClientSession>>>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static> {
+        AMQPConnectionTlsExt::connect_cancellable(self, heartbeat_error_handler, connector)
     }
 }
 
-impl<'a, F: FnOnce(io::Error) + Send + 'static> AMQPConnectionRustlsExt<F> for &'a str {
-    fn connect(self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static> {
-        match self.parse::<AMQPUri>() {
-            Ok(uri)  => uri.connect(heartbeat_error_handler),
-            Err(err) => Box::new(futures::future::err(io::Error::new(io::ErrorKind::Other, err))),
-        }
-    }
-
-    fn connect_cancellable(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static> {
-        match self.parse::<AMQPUri>() {
-            Ok(uri)  => uri.connect_cancellable(heartbeat_error_handler),
-            Err(err) => Box::new(futures::future::err(io::Error::new(io::ErrorKind::Other, err))),
-        }
-    }
-}
-
-impl AMQPStream {
-    fn from_amqp_uri(uri: &AMQPUri) -> Box<Future<Item = Self, Error = io::Error> + Send + 'static> {
-        match uri.scheme {
-            AMQPScheme::AMQP  => AMQPStream::raw(uri.authority.host.clone(), uri.authority.port),
-            AMQPScheme::AMQPS => AMQPStream::tls(uri.authority.host.clone(), uri.authority.port),
-        }
-    }
-
-    fn raw(host: String, port: u16) -> Box<Future<Item = Self, Error = io::Error> + Send + 'static> {
-        Box::new(open_tcp_stream(host, port).map(AMQPStream::Raw))
-    }
-
-    fn tls(host: String, port: u16) -> Box<Future<Item = Self, Error = io::Error> + Send + 'static> {
-        let mut config = ClientConfig::new();
-        config.root_store.add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
-        let config = TlsConnector::from(Arc::new(config));
-
-        Box::new(
-            open_tcp_stream(host.clone(), port).join(
-                futures::future::result(webpki::DNSNameRef::try_from_ascii_str(&host).map(move |domain| domain.to_owned()).map_err(|()| io::Error::new(io::ErrorKind::Other, "Invalid domain name")))
-            ).and_then(move |(stream, domain)| {
-                config.connect(domain.as_ref(), stream).map_err(From::from).map(Box::new).map(AMQPStream::Tls)
-            })
-        )
-    }
-}
-
-impl Read for AMQPStream {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match *self {
-            AMQPStream::Raw(ref mut raw) => raw.read(buf),
-            AMQPStream::Tls(ref mut tls) => tls.read(buf),
-        }
-    }
-}
-
-impl AsyncRead for AMQPStream {
-    unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
-        match *self {
-            AMQPStream::Raw(ref raw) => raw.prepare_uninitialized_buffer(buf),
-            AMQPStream::Tls(ref tls) => tls.prepare_uninitialized_buffer(buf),
-        }
-    }
-
-    fn read_buf<B: BufMut>(&mut self, buf: &mut B) -> Poll<usize, io::Error> {
-        match *self {
-            AMQPStream::Raw(ref mut raw) => raw.read_buf(buf),
-            AMQPStream::Tls(ref mut tls) => tls.read_buf(buf),
-        }
-    }
-}
-
-impl Write for AMQPStream {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match *self {
-            AMQPStream::Raw(ref mut raw) => raw.write(buf),
-            AMQPStream::Tls(ref mut tls) => tls.write(buf),
-        }
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        match *self {
-            AMQPStream::Raw(ref mut raw) => raw.flush(),
-            AMQPStream::Tls(ref mut tls) => tls.flush(),
-        }
-    }
-}
-
-impl AsyncWrite for AMQPStream {
-    fn shutdown(&mut self) -> Poll<(), io::Error> {
-        match *self {
-            AMQPStream::Raw(ref mut raw) => raw.shutdown(),
-            AMQPStream::Tls(ref mut tls) => tls.shutdown(),
-        }
-    }
-
-    fn write_buf<B: Buf>(&mut self, buf: &mut B) -> Poll<usize, io::Error> {
-        match *self {
-            AMQPStream::Raw(ref mut raw) => raw.write_buf(buf),
-            AMQPStream::Tls(ref mut tls) => tls.write_buf(buf),
-        }
-    }
-}
-
-fn open_tcp_stream(host: String, port: u16) -> Box<Future<Item = TcpStream, Error = io::Error> + Send + 'static> {
-    let host = host.clone();
-
-    Box::new(
-        futures::future::result(ResolverFuture::from_system_conf()).flatten().and_then(move |resolver| {
-            resolver.lookup_ip(host.as_str())
-        }).map_err(From::from).and_then(|response| {
-            response.iter().next().ok_or_else(|| io::Error::new(io::ErrorKind::AddrNotAvailable, "Couldn't resolve hostname"))
-        }).and_then(move |ipaddr| {
-            TcpStream::connect(&SocketAddr::new(ipaddr, port))
-        })
-    )
-}
-
-fn connect_stream<T: AsyncRead + AsyncWrite + Send + Sync + 'static, F: FnOnce(io::Error) + Send + 'static>(stream: T, uri: AMQPUri, heartbeat_error_handler: F, create_heartbeat_handle: bool) -> Box<Future<Item = (lapin::client::Client<T>, Option<lapin::client::HeartbeatHandle>), Error = io::Error> + Send + 'static> {
-    Box::new(lapin::client::Client::connect(stream, ConnectionOptions::from_uri(uri)).map(move |(client, mut heartbeat_future)| {
-        let heartbeat_handle = if create_heartbeat_handle { heartbeat_future.handle() } else { None };
-        tokio_executor::spawn(heartbeat_future.map_err(heartbeat_error_handler));
-        (client, heartbeat_handle)
-    }))
-}
+impl<F: FnOnce(io::Error) + Send + 'static> AMQPConnectionRustlsExt<F> for AMQPUri {}
+impl<'a, F: FnOnce(io::Error) + Send + 'static> AMQPConnectionRustlsExt<F> for &'a str {}

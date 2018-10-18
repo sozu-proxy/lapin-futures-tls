@@ -8,7 +8,7 @@ use lapin_futures_tls_api::lapin;
 
 use futures::future::Future;
 use lapin::channel::ConfirmSelectOptions;
-use lapin_futures_tls_api::AMQPConnectionExt;
+use lapin_futures_tls_api::AMQPConnectionTlsApiExt;
 
 fn main() {
     env_logger::init();

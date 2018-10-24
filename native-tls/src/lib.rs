@@ -57,10 +57,13 @@ pub mod lapin;
 /// Reexport of the `uri` module from the `amq_protocol` crate
 pub mod uri;
 
+/// Reexport of `AMQPStream` 
+pub use lapin_futures_tls_internal::AMQPStream;
+
 use std::io;
 
 use futures::future::Future;
-use lapin_futures_tls_internal::{AMQPConnectionTlsExt, AMQPStream};
+use lapin_futures_tls_internal::AMQPConnectionTlsExt;
 use tokio_tcp::TcpStream;
 use tokio_tls::{TlsConnector, TlsStream};
 

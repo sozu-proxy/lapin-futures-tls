@@ -13,10 +13,9 @@ license       = "BSD-2-Clause"
 name = "lapin_futures_openssl"
 
 [dependencies]
-futures            = "^0.1"
-openssl            = "^0.10"
-tokio-openssl      = "^0.2"
-tokio-tcp          = "^0.1"
+futures       = "^0.1"
+openssl       = "^0.10"
+tokio-openssl = "^0.2"
 
 [dependencies.lapin-futures-tls-internal]
 version = "^0.1"

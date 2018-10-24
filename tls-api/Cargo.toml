@@ -13,10 +13,9 @@ license       = "BSD-2-Clause"
 name = "lapin_futures_tls_api"
 
 [dependencies]
-futures            = "^0.1"
-tls-api            = "^0.1.14"
-tokio-tcp          = "^0.1"
-tokio-tls-api      = "^0.1.19"
+futures       = "^0.1"
+tls-api       = "^0.1.14"
+tokio-tls-api = "^0.1.19"
 
 [dependencies.lapin-futures-tls-internal]
 version = "^0.1"

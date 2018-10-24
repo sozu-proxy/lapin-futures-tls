@@ -50,7 +50,6 @@ extern crate futures;
 extern crate lapin_futures_tls_internal;
 extern crate openssl;
 extern crate tokio_openssl;
-extern crate tokio_tcp;
 
 /// Reexport of the `lapin_futures` crate
 pub mod lapin;
@@ -63,10 +62,9 @@ pub type AMQPStream = lapin_futures_tls_internal::AMQPStream<SslStream<TcpStream
 use std::io;
 
 use futures::future::Future;
-use lapin_futures_tls_internal::AMQPConnectionTlsExt;
+use lapin_futures_tls_internal::{AMQPConnectionTlsExt, TcpStream};
 use openssl::ssl::{SslConnector, SslMethod};
 use tokio_openssl::{SslConnectorExt, SslStream};
-use tokio_tcp::TcpStream;
 
 use uri::AMQPUri;
 

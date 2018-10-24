@@ -49,7 +49,6 @@
 extern crate futures;
 extern crate lapin_futures_tls_internal;
 extern crate tokio_rustls;
-extern crate tokio_tcp;
 extern crate webpki_roots;
 
 /// Reexport of the `lapin_futures` crate
@@ -66,9 +65,8 @@ use std::io;
 use std::sync::Arc;
 
 use futures::future::Future;
-use lapin_futures_tls_internal::AMQPConnectionTlsExt;
+use lapin_futures_tls_internal::{AMQPConnectionTlsExt, TcpStream};
 use rustls::{ClientConfig, ClientSession};
-use tokio_tcp::TcpStream;
 use tokio_rustls::{TlsConnector, TlsStream};
 
 use uri::AMQPUri;

@@ -15,7 +15,6 @@ name = "lapin_futures_native_tls"
 [dependencies]
 futures    = "^0.1"
 native-tls = "^0.2"
-tokio-tcp  = "^0.1"
 tokio-tls  = "^0.2"
 
 [dependencies.lapin-futures-tls-internal]

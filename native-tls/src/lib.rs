@@ -49,7 +49,6 @@
 extern crate futures;
 extern crate lapin_futures_tls_internal;
 extern crate native_tls;
-extern crate tokio_tcp;
 extern crate tokio_tls;
 
 /// Reexport of the `lapin_futures` crate
@@ -63,8 +62,7 @@ pub type AMQPStream = lapin_futures_tls_internal::AMQPStream<TlsStream<TcpStream
 use std::io;
 
 use futures::future::Future;
-use lapin_futures_tls_internal::AMQPConnectionTlsExt;
-use tokio_tcp::TcpStream;
+use lapin_futures_tls_internal::{AMQPConnectionTlsExt, TcpStream};
 use tokio_tls::{TlsConnector, TlsStream};
 
 use uri::AMQPUri;

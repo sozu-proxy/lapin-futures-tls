@@ -68,6 +68,9 @@ pub mod lapin;
 /// Reexport of the `uri` module from the `amq_protocol` crate
 pub mod uri;
 
+/// Reexport of `TcpStream`
+pub use tokio_tcp::TcpStream;
+
 use std::io::{self, Read, Write};
 use std::net::SocketAddr;
 
@@ -75,7 +78,6 @@ use bytes::{Buf, BufMut};
 use futures::future::Future;
 use futures::Poll;
 use tokio_io::{AsyncRead, AsyncWrite};
-use tokio_tcp::TcpStream;
 use trust_dns_resolver::ResolverFuture;
 
 use lapin::client::ConnectionOptions;

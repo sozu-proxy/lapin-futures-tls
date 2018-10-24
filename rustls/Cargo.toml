@@ -15,7 +15,6 @@ name = "lapin_futures_rustls"
 [dependencies]
 futures      = "^0.1"
 tokio-rustls = "^0.8"
-tokio-tcp    = "^0.1"
 webpki-roots = "^0.15.0"
 
 [dependencies.lapin-futures-tls-internal]

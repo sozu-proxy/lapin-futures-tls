@@ -19,7 +19,7 @@ lapin-futures      = "^0.14"
 tokio-executor     = "^0.1"
 tokio-io           = "^0.1"
 tokio-tcp          = "^0.1"
-trust-dns-resolver = "^0.9"
+trust-dns-resolver = "^0.10"
 
 [dev-dependencies]
 env_logger = "^0.5"

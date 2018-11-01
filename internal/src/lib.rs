@@ -78,7 +78,8 @@ use bytes::{Buf, BufMut};
 use futures::future::Future;
 use futures::Poll;
 use tokio_io::{AsyncRead, AsyncWrite};
-use trust_dns_resolver::ResolverFuture;
+use trust_dns_resolver::AsyncResolver;
+use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
 
 use lapin::client::ConnectionOptions;
 use uri::{AMQPScheme, AMQPUri};
@@ -205,12 +206,12 @@ impl<TlsStream: AsyncRead + AsyncWrite + Send + 'static> AsyncWrite for AMQPStre
 }
 
 fn open_tcp_stream(host: String, port: u16) -> Box<Future<Item = TcpStream, Error = io::Error> + Send + 'static> {
-    let host = host.clone();
+    let (resolver, background) = AsyncResolver::new(ResolverConfig::default(), ResolverOpts::default());
+
+    tokio_executor::spawn(background);
 
     Box::new(
-        futures::future::result(ResolverFuture::from_system_conf()).flatten().and_then(move |resolver| {
-            resolver.lookup_ip(host.as_str())
-        }).map_err(From::from).and_then(|response| {
+        resolver.lookup_ip(host.as_str()).map_err(From::from).and_then(|response| {
             response.iter().next().ok_or_else(|| io::Error::new(io::ErrorKind::AddrNotAvailable, "Couldn't resolve hostname"))
         }).and_then(move |ipaddr| {
             TcpStream::connect(&SocketAddr::new(ipaddr, port))

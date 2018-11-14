@@ -22,7 +22,7 @@ version = "^0.1"
 path    = "../internal"
 
 [dev-dependencies]
-env_logger   = "^0.5"
+env_logger   = "^0.6"
 tls-api-stub = "^0.1"
 tokio        = "^0.1.6"
 

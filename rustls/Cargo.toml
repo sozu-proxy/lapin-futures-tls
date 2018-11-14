@@ -1,6 +1,6 @@
 [package]
 name          = "lapin-futures-rustls"
-version       = "0.16.3" # remember to update html_root_url
+version       = "0.16.4" # remember to update html_root_url
 authors       = ["Marc-Antoine Perennou <%arc-Antoine@Perennou.com>"]
 description   = "Integration of rustls with lapin-futures"
 repository    = "https://github.com/sozu-proxy/lapin-futures-tls"

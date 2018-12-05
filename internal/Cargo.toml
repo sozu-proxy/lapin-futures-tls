@@ -14,8 +14,9 @@ name = "lapin_futures_tls_internal"
 
 [dependencies]
 bytes              = "^0.4"
+failure            = "^0.1"
 futures            = "^0.1"
-lapin-futures      = "^0.14"
+lapin-futures      = "^0.15"
 tokio-executor     = "^0.1"
 tokio-io           = "^0.1"
 tokio-tcp          = "^0.1"

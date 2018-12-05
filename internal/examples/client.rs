@@ -5,7 +5,7 @@ extern crate native_tls;
 extern crate tokio;
 extern crate tokio_tls;
 
-use lapin_futures_tls_internal::lapin;
+use lapin_futures_tls_internal::{error, lapin};
 
 use futures::future::Future;
 use lapin::channel::ConfirmSelectOptions;
@@ -26,12 +26,12 @@ fn main() {
             }))
         }).and_then(|(client, heartbeat_handle)| {
             println!("Connected!");
-            client.create_confirm_channel(ConfirmSelectOptions::default()).map(|channel| (channel, heartbeat_handle))
-        }).and_then(|(channel, heartbeat_handle)| {
-            println!("Stopping heartbeat.");
-            heartbeat_handle.stop();
-            println!("Closing channel.");
-            channel.close(200, "Bye")
+            client.create_confirm_channel(ConfirmSelectOptions::default()).map(|channel| (channel, heartbeat_handle)).and_then(|(channel, heartbeat_handle)| {
+                println!("Stopping heartbeat.");
+                heartbeat_handle.stop();
+                println!("Closing channel.");
+                channel.close(200, "Bye")
+            }).map_err(|e| error::ErrorKind::ProtocolError(e).into())
         }).map_err(|err| {
             eprintln!("amqp error: {:?}", err);
         })

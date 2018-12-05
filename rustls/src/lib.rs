@@ -19,7 +19,7 @@
 //! extern crate lapin_futures_rustls;
 //! extern crate tokio;
 //!
-//! use lapin_futures_rustls::lapin;
+//! use lapin_futures_rustls::{error, lapin};
 //!
 //! use futures::future::Future;
 //! use lapin::channel::ConfirmSelectOptions;
@@ -33,12 +33,12 @@
 //!             eprintln!("heartbeat error: {:?}", err);
 //!         }).and_then(|(client, heartbeat_handle)| {
 //!             println!("Connected!");
-//!             client.create_confirm_channel(ConfirmSelectOptions::default()).map(|channel| (channel, heartbeat_handle))
-//!         }).and_then(|(channel, heartbeat_handle)| {
-//!             println!("Stopping heartbeat.");
-//!             heartbeat_handle.stop();
-//!             println!("Closing channel.");
-//!             channel.close(200, "Bye")
+//!             client.create_confirm_channel(ConfirmSelectOptions::default()).map(|channel| (channel, heartbeat_handle)).and_then(|(channel, heartbeat_handle)| {
+//!                 println!("Stopping heartbeat.");
+//!                 heartbeat_handle.stop();
+//!                 println!("Closing channel.");
+//!                 channel.close(200, "Bye")
+//!             }).map_err(|e| error::ErrorKind::ProtocolError(e).into())
 //!         }).map_err(|err| {
 //!             eprintln!("amqp error: {:?}", err);
 //!         })
@@ -51,6 +51,8 @@ extern crate lapin_futures_tls_internal;
 extern crate tokio_rustls;
 extern crate webpki_roots;
 
+/// Reexport of the `lapin_futures_tls_internal` errors
+pub mod error;
 /// Reexport of the `lapin_futures` crate
 pub mod lapin;
 /// Reexport of the `uri` module from the `amq_protocol` crate
@@ -66,6 +68,7 @@ use std::sync::Arc;
 
 use futures::future::Future;
 use lapin_futures_tls_internal::{AMQPConnectionTlsExt, TcpStream};
+use lapin_futures_tls_internal::error::Error;
 use rustls::{ClientConfig, ClientSession};
 use tokio_rustls::{TlsConnector, TlsStream};
 
@@ -82,16 +85,16 @@ fn connector(host: String, stream: TcpStream) -> Box<Future<Item = Box<TlsStream
 }
 
 /// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
-pub trait AMQPConnectionRustlsExt<F: FnOnce(io::Error) + Send + 'static> : AMQPConnectionTlsExt<TlsStream<TcpStream, ClientSession>, F> where Self: Sized {
+pub trait AMQPConnectionRustlsExt<F: FnOnce(Error) + Send + 'static> : AMQPConnectionTlsExt<TlsStream<TcpStream, ClientSession>, F> where Self: Sized {
     /// Method providing a `lapin_futures::client::Client` wrapped in a `Future`
-    fn connect(self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = io::Error> + Send + 'static> {
+    fn connect(self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = Error> + Send + 'static> {
         AMQPConnectionTlsExt::connect(self, heartbeat_error_handler, connector)
     }
     /// Method providing a `lapin_futures::client::Client` and `lapin_futures::client::HeartbeatHandle` wrapped in a `Future`
-    fn connect_cancellable(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = io::Error> + Send + 'static> {
+    fn connect_cancellable(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = Error> + Send + 'static> {
         AMQPConnectionTlsExt::connect_cancellable(self, heartbeat_error_handler, connector)
     }
 }
 
-impl<F: FnOnce(io::Error) + Send + 'static> AMQPConnectionRustlsExt<F> for AMQPUri {}
-impl<'a, F: FnOnce(io::Error) + Send + 'static> AMQPConnectionRustlsExt<F> for &'a str {}
+impl<F: FnOnce(Error) + Send + 'static> AMQPConnectionRustlsExt<F> for AMQPUri {}
+impl<'a, F: FnOnce(Error) + Send + 'static> AMQPConnectionRustlsExt<F> for &'a str {}

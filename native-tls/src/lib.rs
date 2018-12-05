@@ -1,5 +1,5 @@
 #![deny(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/lapin-futures-native-tls/0.6.0/")]
+#![doc(html_root_url = "https://docs.rs/lapin-futures-native-tls/0.6.1/")]
 
 //! lapin-futures-native-tls
 //!

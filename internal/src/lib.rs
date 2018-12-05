@@ -21,7 +21,7 @@
 //! extern crate tokio;
 //! extern crate tokio_tls;
 //! 
-//! use lapin_futures_tls_internal::{error, lapin};
+//! use lapin_futures_tls_internal::lapin;
 //! 
 //! use futures::future::Future;
 //! use lapin::channel::ConfirmSelectOptions;
@@ -47,7 +47,7 @@
 //!                 heartbeat_handle.stop();
 //!                 println!("Closing channel.");
 //!                 channel.close(200, "Bye")
-//!             }).map_err(|e| error::ErrorKind::ProtocolError(e).into())
+//!             }).map_err(From::from)
 //!         }).map_err(|err| {
 //!             eprintln!("amqp error: {:?}", err);
 //!         })
@@ -225,7 +225,7 @@ fn open_tcp_stream(host: String, port: u16) -> Box<Future<Item = TcpStream, Erro
 fn connect_stream<T: AsyncRead + AsyncWrite + Send + Sync + 'static, F: FnOnce(Error) + Send + 'static>(stream: T, uri: AMQPUri, heartbeat_error_handler: F, create_heartbeat_handle: bool) -> Box<Future<Item = (lapin::client::Client<T>, Option<lapin::client::HeartbeatHandle>), Error = Error> + Send + 'static> {
     Box::new(lapin::client::Client::connect(stream, ConnectionOptions::from_uri(uri)).map(move |(client, mut heartbeat_future)| {
         let heartbeat_handle = if create_heartbeat_handle { heartbeat_future.handle() } else { None };
-        tokio_executor::spawn(heartbeat_future.map_err(|e| heartbeat_error_handler(ErrorKind::ProtocolError(e).into())));
+        tokio_executor::spawn(heartbeat_future.map_err(|e| heartbeat_error_handler(e.into())));
         (client, heartbeat_handle)
     }).map_err(|e| ErrorKind::ProtocolError(e).into()))
 }

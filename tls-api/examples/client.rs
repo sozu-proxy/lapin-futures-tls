@@ -4,7 +4,7 @@ extern crate lapin_futures_tls_api;
 extern crate tls_api_stub;
 extern crate tokio;
 
-use lapin_futures_tls_api::{error, lapin};
+use lapin_futures_tls_api::lapin;
 
 use futures::future::Future;
 use lapin::channel::ConfirmSelectOptions;
@@ -23,7 +23,7 @@ fn main() {
                 heartbeat_handle.stop();
                 println!("Closing channel.");
                 channel.close(200, "Bye")
-            }).map_err(|e| error::ErrorKind::ProtocolError(e).into())
+            }).map_err(From::from)
         }).map_err(|err| {
             eprintln!("amqp error: {:?}", err);
         })

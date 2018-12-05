@@ -1,6 +1,6 @@
 [package]
 name          = "lapin-futures-native-tls"
-version       = "0.5.4" # remember to update html_root_url
+version       = "0.6.0" # remember to update html_root_url
 authors       = ["Marc-Antoine Perennou <%arc-Antoine@Perennou.com>"]
 description   = "Integration of native-tls with lapin-futures"
 repository    = "https://github.com/sozu-proxy/lapin-futures-tls"

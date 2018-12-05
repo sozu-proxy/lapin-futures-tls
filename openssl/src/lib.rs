@@ -1,5 +1,5 @@
 #![deny(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/lapin-futures-openssl/0.5.4/")]
+#![doc(html_root_url = "https://docs.rs/lapin-futures-openssl/0.6.0/")]
 
 //! lapin-futures-openssl
 //!

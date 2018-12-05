@@ -1,6 +1,6 @@
 [package]
 name          = "lapin-futures-openssl"
-version       = "0.6.0" # remember to update html_root_url
+version       = "0.6.1" # remember to update html_root_url
 authors       = ["Marc-Antoine Perennou <%arc-Antoine@Perennou.com>"]
 description   = "Integration of openssl with lapin-futures"
 repository    = "https://github.com/sozu-proxy/lapin-futures-tls"

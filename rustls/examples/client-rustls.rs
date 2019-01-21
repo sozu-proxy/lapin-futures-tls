@@ -1,13 +1,8 @@
-extern crate env_logger;
-extern crate futures;
-extern crate lapin_futures_openssl;
-extern crate tokio;
-
-use lapin_futures_openssl::lapin;
-
+use env_logger;
 use futures::future::Future;
+use lapin_futures_rustls::{AMQPConnectionRustlsExt, lapin};
 use lapin::channel::ConfirmSelectOptions;
-use lapin_futures_openssl::AMQPConnectionOpensslExt;
+use tokio;
 
 fn main() {
     env_logger::init();

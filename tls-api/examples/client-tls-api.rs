@@ -1,19 +1,14 @@
-extern crate env_logger;
-extern crate futures;
-extern crate lapin_futures_rustls;
-extern crate tokio;
-
-use lapin_futures_rustls::lapin;
-
+use env_logger;
 use futures::future::Future;
+use lapin_futures_tls_api::{AMQPConnectionTlsApiExt, lapin};
 use lapin::channel::ConfirmSelectOptions;
-use lapin_futures_rustls::AMQPConnectionRustlsExt;
+use tokio;
 
 fn main() {
     env_logger::init();
 
     tokio::run(
-        "amqps://user:pass@host/vhost?heartbeat=10".connect_cancellable(|err| {
+        "amqps://user:pass@host/vhost?heartbeat=10".connect_cancellable::<tls_api_stub::TlsConnector>(|err| {
             eprintln!("heartbeat error: {:?}", err);
         }).and_then(|(client, heartbeat_handle)| {
             println!("Connected!");

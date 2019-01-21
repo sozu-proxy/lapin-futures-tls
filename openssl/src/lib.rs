@@ -14,16 +14,11 @@
 //! ## Connecting and opening a channel
 //!
 //! ```rust,no_run
-//! extern crate env_logger;
-//! extern crate futures;
-//! extern crate lapin_futures_openssl;
-//! extern crate tokio;
-//!
-//! use lapin_futures_openssl::lapin;
-//!
+//! use env_logger;
 //! use futures::future::Future;
+//! use lapin_futures_openssl::{AMQPConnectionOpensslExt, lapin};
 //! use lapin::channel::ConfirmSelectOptions;
-//! use lapin_futures_openssl::AMQPConnectionOpensslExt;
+//! use tokio;
 //!
 //! fn main() {
 //!     env_logger::init();
@@ -46,11 +41,6 @@
 //! }
 //! ```
 
-extern crate futures;
-extern crate lapin_futures_tls_internal;
-extern crate openssl;
-extern crate tokio_openssl;
-
 /// Reexport of the `lapin_futures_tls_internal` errors
 pub mod error;
 /// Reexport of the `lapin_futures` crate
@@ -58,20 +48,19 @@ pub mod lapin;
 /// Reexport of the `uri` module from the `amq_protocol` crate
 pub mod uri;
 
-/// Reexport of `AMQPStream` 
+/// Reexport of `AMQPStream`
 pub type AMQPStream = lapin_futures_tls_internal::AMQPStream<SslStream<TcpStream>>;
 
-use std::io;
-
-use futures::future::Future;
-use lapin_futures_tls_internal::{AMQPConnectionTlsExt, TcpStream};
-use lapin_futures_tls_internal::error::Error;
+use futures::{self, future::Future};
+use lapin_futures_tls_internal::{self, AMQPConnectionTlsExt, error::Error, TcpStream};
 use openssl::ssl::{SslConnector, SslMethod};
 use tokio_openssl::{SslConnectorExt, SslStream};
 
+use std::io;
+
 use uri::AMQPUri;
 
-fn connector(host: String, stream: TcpStream) -> Box<Future<Item = Box<SslStream<TcpStream>>, Error = io::Error> + Send + 'static> {
+fn connector(host: String, stream: TcpStream) -> Box<dyn Future<Item = Box<SslStream<TcpStream>>, Error = io::Error> + Send + 'static> {
     Box::new(futures::future::result(SslConnector::builder(SslMethod::tls()).map_err(|_| io::Error::new(io::ErrorKind::Other, "Failed to create connector"))).and_then(move |connector| {
         connector.build().connect_async(&host, stream).map_err(|_| io::Error::new(io::ErrorKind::Other, "Failed to connect")).map(Box::new)
     }))
@@ -80,11 +69,11 @@ fn connector(host: String, stream: TcpStream) -> Box<Future<Item = Box<SslStream
 /// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
 pub trait AMQPConnectionOpensslExt<F: FnOnce(Error) + Send + 'static> : AMQPConnectionTlsExt<SslStream<TcpStream>, F> where Self: Sized {
     /// Method providing a `lapin_futures::client::Client` wrapped in a `Future`
-    fn connect(self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = Error> + Send + 'static> {
+    fn connect(self, heartbeat_error_handler: F) -> Box<dyn Future<Item = lapin::client::Client<AMQPStream>, Error = Error> + Send + 'static> {
         AMQPConnectionTlsExt::connect(self, heartbeat_error_handler, connector)
     }
     /// Method providing a `lapin_futures::client::Client` and `lapin_futures::client::HeartbeatHandle` wrapped in a `Future`
-    fn connect_cancellable(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = Error> + Send + 'static> {
+    fn connect_cancellable(self, heartbeat_error_handler: F) -> Box<dyn Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = Error> + Send + 'static> {
         AMQPConnectionTlsExt::connect_cancellable(self, heartbeat_error_handler, connector)
     }
 }

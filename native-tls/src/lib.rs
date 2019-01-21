@@ -14,16 +14,11 @@
 //! ## Connecting and opening a channel
 //!
 //! ```rust,no_run
-//! extern crate env_logger;
-//! extern crate futures;
-//! extern crate lapin_futures_native_tls;
-//! extern crate tokio;
-//!
-//! use lapin_futures_native_tls::lapin;
-//!
+//! use env_logger;
 //! use futures::future::Future;
+//! use lapin_futures_native_tls::{AMQPConnectionNativeTlsExt, lapin};
 //! use lapin::channel::ConfirmSelectOptions;
-//! use lapin_futures_native_tls::AMQPConnectionNativeTlsExt;
+//! use tokio;
 //!
 //! fn main() {
 //!     env_logger::init();
@@ -46,11 +41,6 @@
 //! }
 //! ```
 
-extern crate futures;
-extern crate lapin_futures_tls_internal;
-extern crate native_tls;
-extern crate tokio_tls;
-
 /// Reexport of the `lapin_futures_tls_internal` errors
 pub mod error;
 /// Reexport of the `lapin_futures` crate
@@ -58,19 +48,19 @@ pub mod lapin;
 /// Reexport of the `uri` module from the `amq_protocol` crate
 pub mod uri;
 
-/// Reexport of `AMQPStream` 
+/// Reexport of `AMQPStream`
 pub type AMQPStream = lapin_futures_tls_internal::AMQPStream<TlsStream<TcpStream>>;
+
+use futures::{self, future::Future};
+use lapin_futures_tls_internal::{self, AMQPConnectionTlsExt, error::Error, TcpStream};
+use native_tls;
+use tokio_tls::{TlsConnector, TlsStream};
 
 use std::io;
 
-use futures::future::Future;
-use lapin_futures_tls_internal::{AMQPConnectionTlsExt, TcpStream};
-use lapin_futures_tls_internal::error::Error;
-use tokio_tls::{TlsConnector, TlsStream};
-
 use uri::AMQPUri;
 
-fn connector(host: String, stream: TcpStream) -> Box<Future<Item = Box<TlsStream<TcpStream>>, Error = io::Error> + Send + 'static> {
+fn connector(host: String, stream: TcpStream) -> Box<dyn Future<Item = Box<TlsStream<TcpStream>>, Error = io::Error> + Send + 'static> {
     Box::new(futures::future::result(native_tls::TlsConnector::builder().build().map_err(|_| io::Error::new(io::ErrorKind::Other, "Failed to create connector"))).and_then(move |connector| {
         TlsConnector::from(connector).connect(&host, stream).map_err(|_| io::Error::new(io::ErrorKind::Other, "Failed to connect")).map(Box::new)
     }))
@@ -79,11 +69,11 @@ fn connector(host: String, stream: TcpStream) -> Box<Future<Item = Box<TlsStream
 /// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
 pub trait AMQPConnectionNativeTlsExt<F: FnOnce(Error) + Send + 'static> : AMQPConnectionTlsExt<TlsStream<TcpStream>, F> where Self: Sized {
     /// Method providing a `lapin_futures::client::Client` wrapped in a `Future`
-    fn connect(self, heartbeat_error_handler: F) -> Box<Future<Item = lapin::client::Client<AMQPStream>, Error = Error> + Send + 'static> {
+    fn connect(self, heartbeat_error_handler: F) -> Box<dyn Future<Item = lapin::client::Client<AMQPStream>, Error = Error> + Send + 'static> {
         AMQPConnectionTlsExt::connect(self, heartbeat_error_handler, connector)
     }
     /// Method providing a `lapin_futures::client::Client` and `lapin_futures::client::HeartbeatHandle` wrapped in a `Future`
-    fn connect_cancellable(self, heartbeat_error_handler: F) -> Box<Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = Error> + Send + 'static> {
+    fn connect_cancellable(self, heartbeat_error_handler: F) -> Box<dyn Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = Error> + Send + 'static> {
         AMQPConnectionTlsExt::connect_cancellable(self, heartbeat_error_handler, connector)
     }
 }

@@ -12,6 +12,10 @@ license       = "BSD-2-Clause"
 [lib]
 name = "lapin_futures_native_tls"
 
+[features]
+default      = ["dns-over-tls"]
+dns-over-tls = ["lapin-futures-tls-internal/dns-over-native-tls"]
+
 [dependencies]
 futures    = "^0.1"
 native-tls = "^0.2"

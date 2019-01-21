@@ -12,6 +12,11 @@ license       = "BSD-2-Clause"
 [lib]
 name = "lapin_futures_rustls"
 
+[features]
+default        = ["dns-over-https", "dns-over-tls"]
+dns-over-https = ["lapin-futures-tls-internal/dns-over-https-rustls"]
+dns-over-tls   = ["lapin-futures-tls-internal/dns-over-rustls"]
+
 [dependencies]
 futures      = "^0.1"
 tokio-rustls = "^0.8"

@@ -12,6 +12,13 @@ license       = "BSD-2-Clause"
 [lib]
 name = "lapin_futures_tls_internal"
 
+[features]
+default               = []
+dns-over-https-rustls = ["trust-dns-resolver/dns-over-https-rustls"]
+dns-over-native-tls   = ["trust-dns-resolver/dns-over-native-tls"]
+dns-over-openssl      = ["trust-dns-resolver/dns-over-openssl"]
+dns-over-rustls       = ["trust-dns-resolver/dns-over-rustls"]
+
 [dependencies]
 bytes              = "^0.4"
 failure            = "^0.1"

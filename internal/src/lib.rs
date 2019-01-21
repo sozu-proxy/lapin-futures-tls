@@ -1,5 +1,6 @@
 #![deny(missing_docs)]
 #![doc(html_root_url = "https://docs.rs/lapin-futures-tls-internal/0.3.1/")]
+#![recursion_limit="128"]
 
 //! lapin-futures-openssl
 //!

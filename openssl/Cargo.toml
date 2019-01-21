@@ -12,6 +12,10 @@ license       = "BSD-2-Clause"
 [lib]
 name = "lapin_futures_openssl"
 
+[features]
+default      = ["dns-over-tls"]
+dns-over-tls = ["lapin-futures-tls-internal/dns-over-openssl"]
+
 [dependencies]
 futures       = "^0.1"
 openssl       = "^0.10"

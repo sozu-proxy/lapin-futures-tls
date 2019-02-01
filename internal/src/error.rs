@@ -80,9 +80,3 @@ impl From<Context<ErrorKind>> for Error {
         Error { inner: inner }
     }
 }
-
-impl From<lapin_futures::error::Error> for Error {
-    fn from(error: lapin_futures::error::Error) -> Error {
-        ErrorKind::ProtocolError(error).into()
-    }
-}

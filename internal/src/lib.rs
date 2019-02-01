@@ -16,6 +16,7 @@
 //!
 //! ```rust,no_run
 //! use env_logger;
+//! use failure::Error;
 //! use futures::{self, future::Future};
 //! use lapin_futures_tls_internal::{AMQPConnectionTlsExt, lapin};
 //! use lapin::channel::ConfirmSelectOptions;
@@ -35,14 +36,14 @@
 //!             Box::new(futures::future::result(native_tls::TlsConnector::builder().build().map_err(|_| io::Error::new(io::ErrorKind::Other, "Failed to create connector"))).and_then(move |connector| {
 //!                 TlsConnector::from(connector).connect(&host, stream).map_err(|_| io::Error::new(io::ErrorKind::Other, "Failed to connect")).map(Box::new)
 //!             }))
-//!         }).and_then(|(client, heartbeat_handle)| {
+//!         }).map_err(Error::from).and_then(|(client, heartbeat_handle)| {
 //!             println!("Connected!");
 //!             client.create_confirm_channel(ConfirmSelectOptions::default()).map(|channel| (channel, heartbeat_handle)).and_then(|(channel, heartbeat_handle)| {
 //!                 println!("Stopping heartbeat.");
 //!                 heartbeat_handle.stop();
 //!                 println!("Closing channel.");
 //!                 channel.close(200, "Bye")
-//!             }).map_err(From::from)
+//!             }).map_err(Error::from)
 //!         }).map_err(|err| {
 //!             eprintln!("amqp error: {:?}", err);
 //!         })
@@ -212,7 +213,7 @@ fn open_tcp_stream(host: String, port: u16) -> Box<dyn Future<Item = TcpStream, 
 fn connect_stream<T: AsyncRead + AsyncWrite + Send + Sync + 'static, F: FnOnce(Error) + Send + 'static>(stream: T, uri: AMQPUri, heartbeat_error_handler: F, create_heartbeat_handle: bool) -> Box<dyn Future<Item = (lapin::client::Client<T>, Option<lapin::client::HeartbeatHandle>), Error = Error> + Send + 'static> {
     Box::new(lapin::client::Client::connect(stream, ConnectionOptions::from_uri(uri)).map(move |(client, mut heartbeat_future)| {
         let heartbeat_handle = if create_heartbeat_handle { heartbeat_future.handle() } else { None };
-        tokio_executor::spawn(heartbeat_future.map_err(|e| heartbeat_error_handler(e.into())));
+        tokio_executor::spawn(heartbeat_future.map_err(|e| heartbeat_error_handler(ErrorKind::ProtocolError(e).into())));
         (client, heartbeat_handle)
     }).map_err(|e| ErrorKind::ProtocolError(e).into()))
 }

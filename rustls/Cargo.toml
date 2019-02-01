@@ -21,10 +21,10 @@ dns-over-tls   = ["lapin-futures-tls-internal/dns-over-rustls"]
 [dependencies]
 futures      = "^0.1"
 tokio-rustls = "^0.9"
-webpki-roots = "^0.16.0"
+webpki-roots = "^0.16"
 
 [dependencies.lapin-futures-tls-internal]
-version = "^0.4"
+version = "^0.5"
 path    = "../internal"
 
 [dev-dependencies]

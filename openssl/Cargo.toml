@@ -23,7 +23,7 @@ openssl       = "^0.10"
 tokio-openssl = "^0.3"
 
 [dependencies.lapin-futures-tls-internal]
-version = "^0.4"
+version = "^0.5"
 path    = "../internal"
 
 [dev-dependencies]

@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![warn(rust_2018_idioms)]
 #![doc(html_root_url = "https://docs.rs/lapin-futures-rustls/0.19.0/")]
 
 //! lapin-futures-rustls

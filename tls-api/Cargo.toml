@@ -19,7 +19,7 @@ tls-api       = "^0.1.14"
 tokio-tls-api = "^0.1.19"
 
 [dependencies.lapin-futures-tls-internal]
-version = "^0.5"
+version = "^0.6"
 path    = "../internal"
 
 [dev-dependencies]

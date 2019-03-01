@@ -69,16 +69,20 @@ fn connector(host: String, stream: TcpStream) -> Box<dyn Future<Item = Box<SslSt
 }
 
 /// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
-pub trait AMQPConnectionOpensslExt<F: FnOnce(Error) + Send + 'static> : AMQPConnectionTlsExt<SslStream<TcpStream>, F> where Self: Sized {
+pub trait AMQPConnectionOpensslExt: AMQPConnectionTlsExt<SslStream<TcpStream>> where Self: Sized {
     /// Method providing a `lapin_futures::client::Client` wrapped in a `Future`
-    fn connect(self, heartbeat_error_handler: F) -> Box<dyn Future<Item = lapin::client::Client<AMQPStream>, Error = Error> + Send + 'static> {
-        AMQPConnectionTlsExt::connect(self, heartbeat_error_handler, connector)
+    fn connect(self) -> Box<dyn Future<Item = lapin::client::Client<AMQPStream>, Error = Error> + Send + 'static> {
+        AMQPConnectionTlsExt::connect(self, connector)
     }
     /// Method providing a `lapin_futures::client::Client` and `lapin_futures::client::HeartbeatHandle` wrapped in a `Future`
-    fn connect_cancellable(self, heartbeat_error_handler: F) -> Box<dyn Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = Error> + Send + 'static> {
+    fn connect_cancellable<F: FnOnce(Error) + Send + 'static>(self, heartbeat_error_handler: F) -> Box<dyn Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = Error> + Send + 'static> {
         AMQPConnectionTlsExt::connect_cancellable(self, heartbeat_error_handler, connector)
+    }
+    /// Method providing a `lapin_futures::client::Client`, a `lapin_futures::client::HeartbeatHandle` and a `lapin::client::Heartbeat` pulse wrapped in a `Future`
+    fn connect_raw(self) -> Box<dyn Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle, Box<dyn Future<Item = (), Error = Error> + Send + 'static>), Error = Error> + Send + 'static> {
+        AMQPConnectionTlsExt::connect_raw(self, connector)
     }
 }
 
-impl<F: FnOnce(Error) + Send + 'static> AMQPConnectionOpensslExt<F> for AMQPUri {}
-impl<'a, F: FnOnce(Error) + Send + 'static> AMQPConnectionOpensslExt<F> for &'a str {}
+impl AMQPConnectionOpensslExt for AMQPUri {}
+impl<'a> AMQPConnectionOpensslExt for &'a str {}

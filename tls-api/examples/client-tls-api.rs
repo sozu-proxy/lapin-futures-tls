@@ -9,7 +9,7 @@ fn main() {
     env_logger::init();
 
     tokio::run(
-        "amqps://user:pass@host/vhost?heartbeat=10".connect_cancellable::<tls_api_stub::TlsConnector>(|err| {
+        "amqps://user:pass@host/vhost?heartbeat=10".connect_cancellable::<tls_api_stub::TlsConnector, _>(|err| {
             eprintln!("heartbeat error: {:?}", err);
         }).map_err(Error::from).and_then(|(client, heartbeat_handle)| {
             println!("Connected!");

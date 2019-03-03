@@ -1,6 +1,6 @@
 [package]
 name          = "lapin-futures-rustls"
-version       = "0.20.0" # remember to update html_root_url
+version       = "0.21.0" # remember to update html_root_url
 edition       = "2018"
 authors       = ["Marc-Antoine Perennou <%arc-Antoine@Perennou.com>"]
 description   = "Integration of rustls with lapin-futures"
@@ -24,7 +24,7 @@ tokio-rustls = "^0.9"
 webpki-roots = "^0.16"
 
 [dependencies.lapin-futures-tls-internal]
-version = "^0.6"
+version = "^0.7"
 path    = "../internal"
 
 [dev-dependencies]

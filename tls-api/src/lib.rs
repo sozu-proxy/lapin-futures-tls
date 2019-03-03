@@ -70,17 +70,13 @@ fn connector<C: TlsConnector + Send + 'static>(host: String, stream: TcpStream) 
 
 /// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
 pub trait AMQPConnectionTlsApiExt: AMQPConnectionTlsExt<TlsStream<TcpStream>> where Self: Sized {
-    /// Method providing a `lapin_futures::client::Client` wrapped in a `Future`
-    fn connect<C: TlsConnector + Send + 'static>(self) -> Box<dyn Future<Item = lapin::client::Client<AMQPStream>, Error = Error> + Send + 'static> {
+    /// Method providing a `lapin_futures::client::Client`, a `lapin_futures::client::HeartbeatHandle` and a `lapin::client::Heartbeat` pulse wrapped in a `Future`
+    fn connect<C: TlsConnector + Send + 'static>(self) -> Box<dyn Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle, Box<dyn Future<Item = (), Error = Error> + Send + 'static>), Error = Error> + Send + 'static> {
         AMQPConnectionTlsExt::connect(self, connector::<C>)
     }
     /// Method providing a `lapin_futures::client::Client` and `lapin_futures::client::HeartbeatHandle` wrapped in a `Future`
     fn connect_cancellable<C: TlsConnector + Send + 'static, F: FnOnce(Error) + Send + 'static>(self, heartbeat_error_handler: F) -> Box<dyn Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = Error> + Send + 'static> {
         AMQPConnectionTlsExt::connect_cancellable(self, heartbeat_error_handler, connector::<C>)
-    }
-    /// Method providing a `lapin_futures::client::Client`, a `lapin_futures::client::HeartbeatHandle` and a `lapin::client::Heartbeat` pulse wrapped in a `Future`
-    fn connect_raw<C: TlsConnector + Send + 'static>(self) -> Box<dyn Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle, Box<dyn Future<Item = (), Error = Error> + Send + 'static>), Error = Error> + Send + 'static> {
-        AMQPConnectionTlsExt::connect_raw(self, connector::<C>)
     }
 }
 

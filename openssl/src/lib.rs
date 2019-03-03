@@ -54,7 +54,7 @@ pub mod uri;
 pub type AMQPStream = lapin_futures_tls_internal::AMQPStream<SslStream<TcpStream>>;
 
 use futures::{self, future::Future};
-use lapin_futures_tls_internal::{self, AMQPConnectionTlsExt, error::Error, TcpStream};
+use lapin_futures_tls_internal::{self, AMQPConnectionTlsExt, error::Error, lapin::client::ConnectionProperties, TcpStream};
 use openssl::ssl::{SslConnector, SslMethod};
 use tokio_openssl::{SslConnectorExt, SslStream};
 
@@ -77,6 +77,14 @@ pub trait AMQPConnectionOpensslExt: AMQPConnectionTlsExt<SslStream<TcpStream>> w
     /// Method providing a `lapin_futures::client::Client` and `lapin_futures::client::HeartbeatHandle` wrapped in a `Future`
     fn connect_cancellable<F: FnOnce(Error) + Send + 'static>(self, heartbeat_error_handler: F) -> Box<dyn Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = Error> + Send + 'static> {
         AMQPConnectionTlsExt::connect_cancellable(self, heartbeat_error_handler, connector)
+    }
+    /// Method providing a `lapin_futures::client::Client`, a `lapin_futures::client::HeartbeatHandle` and a `lapin::client::Heartbeat` pulse wrapped in a `Future`
+    fn connect_full(self, properties: ConnectionProperties) -> Box<dyn Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle, Box<dyn Future<Item = (), Error = Error> + Send + 'static>), Error = Error> + Send + 'static> {
+        AMQPConnectionTlsExt::connect_full(self, connector, properties)
+    }
+    /// Method providing a `lapin_futures::client::Client` and `lapin_futures::client::HeartbeatHandle` wrapped in a `Future`
+    fn connect_cancellable_full<F: FnOnce(Error) + Send + 'static>(self, heartbeat_error_handler: F, properties: ConnectionProperties) -> Box<dyn Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle), Error = Error> + Send + 'static> {
+        AMQPConnectionTlsExt::connect_cancellable_full(self, heartbeat_error_handler, connector, properties)
     }
 }
 

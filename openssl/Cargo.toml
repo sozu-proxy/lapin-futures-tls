@@ -1,6 +1,6 @@
 [package]
 name          = "lapin-futures-openssl"
-version       = "0.9.0" # remember to update html_root_url
+version       = "0.10.0" # remember to update html_root_url
 edition       = "2018"
 authors       = ["Marc-Antoine Perennou <%arc-Antoine@Perennou.com>"]
 description   = "Integration of openssl with lapin-futures"
@@ -23,7 +23,7 @@ openssl       = "^0.10"
 tokio-openssl = "^0.3"
 
 [dependencies.lapin-futures-tls-internal]
-version = "^0.6"
+version = "^0.7"
 path    = "../internal"
 
 [dev-dependencies]

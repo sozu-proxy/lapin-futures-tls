@@ -1,6 +1,6 @@
 [package]
 name          = "lapin-futures-tls-api"
-version       = "0.17.0" # remember to update html_root_url
+version       = "0.18.0" # remember to update html_root_url
 edition       = "2018"
 authors       = ["Marc-Antoine Perennou <%arc-Antoine@Perennou.com>"]
 description   = "Integration of tls-api with lapin-futures"
@@ -19,7 +19,7 @@ tls-api       = "^0.1.14"
 tokio-tls-api = "^0.1.19"
 
 [dependencies.lapin-futures-tls-internal]
-version = "^0.6"
+version = "^0.7"
 path    = "../internal"
 
 [dev-dependencies]

@@ -16,7 +16,7 @@ name = "lapin_futures_tls_api"
 [dependencies]
 futures       = "^0.1"
 tls-api       = "^0.1.14"
-tokio-tls-api = "^0.1.19"
+tokio-tls-api = "^0.2.0"
 
 [dependencies.lapin-futures-tls-internal]
 version = "^0.7"

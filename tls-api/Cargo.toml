@@ -15,8 +15,8 @@ name = "lapin_futures_tls_api"
 
 [dependencies]
 futures       = "^0.1"
-tls-api       = "^0.1.14"
-tokio-tls-api = "^0.1.19"
+tls-api       = "^0.2"
+tokio-tls-api = "^0.2"
 
 [dependencies.lapin-futures-tls-internal]
 version = "^0.7"
@@ -25,7 +25,7 @@ path    = "../internal"
 [dev-dependencies]
 env_logger   = "^0.6"
 failure      = "^0.1"
-tls-api-stub = "^0.1"
+tls-api-stub = "^0.2"
 tokio        = "^0.1.6"
 
 [badges]

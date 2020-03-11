@@ -53,13 +53,17 @@
 //! ```
 
 /// The type errors that can be returned in this crate.
+#[deprecated(note = "use lapin directly instead")]
 pub mod error;
 /// Reexport of the `lapin_futures` crate
+#[deprecated(note = "use lapin directly instead")]
 pub mod lapin;
 /// Reexport of the `uri` module from the `amq_protocol` crate
+#[deprecated(note = "use lapin directly instead")]
 pub mod uri;
 
 /// Reexport of `TcpStream`
+#[deprecated(note = "use lapin directly instead")]
 pub use tokio_tcp::TcpStream;
 
 use bytes::{Buf, BufMut};
@@ -78,6 +82,7 @@ use uri::{AMQPScheme, AMQPUri};
 
 /// Represents either a raw `TcpStream` or a `TlsStream`.
 /// The `TlsStream` is wrapped in a `Box` to keep the enum footprint minimal.
+#[deprecated(note = "use lapin directly instead")]
 pub enum AMQPStream<TlsStream: AsyncRead + AsyncWrite + Send + 'static> {
     /// The raw `TcpStream` used for basic AMQP connections.
     Raw(TcpStream),
@@ -86,6 +91,7 @@ pub enum AMQPStream<TlsStream: AsyncRead + AsyncWrite + Send + 'static> {
 }
 
 /// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
+#[deprecated(note = "use lapin directly instead")]
 pub trait AMQPConnectionTlsExt<TlsStream: AsyncRead + AsyncWrite + Send + Sync + 'static> {
     /// Method providing a `lapin_futures::client::Client`, a `lapin_futures::client::HeartbeatHandle` and a `lapin::client::Heartbeat` pulse wrapped in a `Future`
     fn connect<Connector: FnOnce(String, TcpStream) -> Box<dyn Future<Item = Box<TlsStream>, Error = io::Error> + Send + 'static> + Send + 'static>(self, connector: Connector) -> Box<dyn Future<Item = (lapin::client::Client<AMQPStream<TlsStream>>, lapin::client::HeartbeatHandle, Box<dyn Future<Item = (), Error = Error> + Send + 'static>), Error = Error> + Send + 'static>;

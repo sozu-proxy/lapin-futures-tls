@@ -44,13 +44,17 @@
 //! ```
 
 /// Reexport of the `lapin_futures_tls_internal` errors
+#[deprecated(note = "use lapin directly instead")]
 pub mod error;
 /// Reexport of the `lapin_futures` crate
+#[deprecated(note = "use lapin directly instead")]
 pub mod lapin;
 /// Reexport of the `uri` module from the `amq_protocol` crate
+#[deprecated(note = "use lapin directly instead")]
 pub mod uri;
 
 /// Reexport of `AMQPStream`
+#[deprecated(note = "use lapin directly instead")]
 pub type AMQPStream = lapin_futures_tls_internal::AMQPStream<TlsStream<TcpStream, ClientSession>>;
 
 use futures::{self, future::Future};
@@ -75,6 +79,7 @@ fn connector(host: String, stream: TcpStream) -> Box<dyn Future<Item = Box<TlsSt
 }
 
 /// Add a connect method providing a `lapin_futures::client::Client` wrapped in a `Future`.
+#[deprecated(note = "use lapin directly instead")]
 pub trait AMQPConnectionRustlsExt: AMQPConnectionTlsExt<TlsStream<TcpStream, ClientSession>> where Self: Sized {
     /// Method providing a `lapin_futures::client::Client`, a `lapin_futures::client::HeartbeatHandle` and a `lapin::client::Heartbeat` pulse wrapped in a `Future`
     fn connect(self) -> Box<dyn Future<Item = (lapin::client::Client<AMQPStream>, lapin::client::HeartbeatHandle, Box<dyn Future<Item = (), Error = Error> + Send + 'static>), Error = Error> + Send + 'static> {

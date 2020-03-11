@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 #![warn(rust_2018_idioms)]
-#![doc(html_root_url = "https://docs.rs/lapin-futures-tls-internal/0.7.0/")]
+#![doc(html_root_url = "https://docs.rs/lapin-futures-tls-internal/0.7.1/")]
 #![recursion_limit="128"]
 
 //! lapin-futures-openssl

@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 #![warn(rust_2018_idioms)]
-#![doc(html_root_url = "https://docs.rs/lapin-futures-tls-api/0.19.0/")]
+#![doc(html_root_url = "https://docs.rs/lapin-futures-tls-api/0.19.1/")]
 
 //! lapin-futures-tls-api
 //!
